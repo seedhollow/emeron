@@ -1,0 +1,179 @@
+{
+    // Debug configurations for emeron.
+    //
+    // The first entry follows whatever target and build variant you picked in
+    // the CMake Tools status bar, so it is the one to use day to day. The rest
+    // target fixed build directories for when you are not driving CMake Tools.
+    //
+    // Windows: replace "cppdbg" with "cppvsdbg" and drop MIMode -- the MI
+    // debugger protocol is not used by the Visual Studio debugger.
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug: CMake Tools target",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${command:cmake.launchTargetPath}",
+            "args": [
+                "--log-level",
+                "debug"
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "lldb",
+            "osx": {
+                "MIMode": "lldb"
+            },
+            "linux": {
+                "MIMode": "gdb",
+                "setupCommands": [
+                    {
+                        "description": "Pretty-print STL containers",
+                        "text": "-enable-pretty-printing",
+                        "ignoreFailures": true
+                    }
+                ]
+            }
+        },
+        {
+            "name": "Debug: emeron (GUI)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/emeron",
+            "args": [
+                "--log-level",
+                "debug"
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "preLaunchTask": "cmake: build",
+            "MIMode": "lldb",
+            "osx": {
+                "MIMode": "lldb"
+            },
+            "linux": {
+                "MIMode": "gdb"
+            }
+        },
+        {
+            "name": "Debug: emeron (GUI, no viewports)",
+            // Multi-viewport puts panels in real OS windows, which makes
+            // breakpoint-stepping awkward because the UI stops redrawing.
+            // This keeps everything inside one window.
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/emeron",
+            "args": [
+                "--no-viewports",
+                "--no-vsync",
+                "--log-level",
+                "trace"
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "preLaunchTask": "cmake: build",
+            "MIMode": "lldb",
+            "osx": {
+                "MIMode": "lldb"
+            },
+            "linux": {
+                "MIMode": "gdb"
+            }
+        },
+        {
+            "name": "Debug: unit tests",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/tests/emeron_tests",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "preLaunchTask": "cmake: build",
+            "MIMode": "lldb",
+            "osx": {
+                "MIMode": "lldb"
+            },
+            "linux": {
+                "MIMode": "gdb"
+            }
+        },
+        {
+            "name": "Debug: unit tests (ASan + UBSan)",
+            // abort_on_error makes the sanitizer trap into the debugger at the
+            // point of the fault instead of printing a report and exiting.
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build-asan/tests/emeron_tests",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                {
+                    "name": "ASAN_OPTIONS",
+                    "value": "detect_leaks=0:abort_on_error=1"
+                },
+                {
+                    "name": "UBSAN_OPTIONS",
+                    "value": "print_stacktrace=1:halt_on_error=1"
+                }
+            ],
+            "externalConsole": false,
+            "preLaunchTask": "cmake: build (asan)",
+            "MIMode": "lldb",
+            "osx": {
+                "MIMode": "lldb"
+            },
+            "linux": {
+                "MIMode": "gdb"
+            }
+        },
+        {
+            "name": "Debug: emeron (ASan + UBSan)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build-asan/emeron",
+            "args": [
+                "--no-viewports",
+                "--log-level",
+                "debug"
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                {
+                    "name": "ASAN_OPTIONS",
+                    "value": "detect_leaks=0:abort_on_error=1"
+                },
+                {
+                    "name": "UBSAN_OPTIONS",
+                    "value": "print_stacktrace=1:halt_on_error=1"
+                }
+            ],
+            "externalConsole": false,
+            "preLaunchTask": "cmake: build (asan)",
+            "MIMode": "lldb",
+            "osx": {
+                "MIMode": "lldb"
+            },
+            "linux": {
+                "MIMode": "gdb"
+            }
+        },
+        {
+            "name": "Attach to running emeron",
+            "type": "cppdbg",
+            "request": "attach",
+            "program": "${workspaceFolder}/build/emeron",
+            "MIMode": "lldb",
+            "osx": {
+                "MIMode": "lldb"
+            },
+            "linux": {
+                "MIMode": "gdb"
+            }
+        }
+    ],
+    "compounds": []
+}

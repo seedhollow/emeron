@@ -1,0 +1,135 @@
+{
+    // The default "clang build active file" task VS Code generates is wrong for
+    // this project -- emeron is a CMake target tree, not a set of standalone
+    // files, so compiling one .cpp on its own always fails on includes. These
+    // tasks drive CMake instead.
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "cmake: configure",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "-S",
+                "${workspaceFolder}",
+                "-B",
+                "${workspaceFolder}/build",
+                "-G",
+                "Ninja",
+                "-DCMAKE_BUILD_TYPE=RelWithDebInfo"
+            ],
+            "problemMatcher": [],
+            "detail": "Fetches dependencies and writes build/compile_commands.json"
+        },
+        {
+            "label": "cmake: build",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${workspaceFolder}/build"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "detail": "Build everything (configures first if needed)",
+            "dependsOn": [
+                "cmake: ensure configured"
+            ]
+        },
+        {
+            "label": "cmake: ensure configured",
+            "type": "shell",
+            "command": "sh",
+            "args": [
+                "-c",
+                "test -f '${workspaceFolder}/build/CMakeCache.txt' || cmake -S '${workspaceFolder}' -B '${workspaceFolder}/build' -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "silent"
+            },
+            "windows": {
+                "command": "cmd",
+                "args": [
+                    "/c",
+                    "if not exist \"${workspaceFolder}\\build\\CMakeCache.txt\" cmake -S \"${workspaceFolder}\" -B \"${workspaceFolder}\\build\" -DCMAKE_BUILD_TYPE=RelWithDebInfo"
+                ]
+            }
+        },
+        {
+            "label": "cmake: configure (asan)",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "-S",
+                "${workspaceFolder}",
+                "-B",
+                "${workspaceFolder}/build-asan",
+                "-G",
+                "Ninja",
+                "-DCMAKE_BUILD_TYPE=Debug",
+                "-DEMERON_ASAN=ON"
+            ],
+            "problemMatcher": [],
+            "detail": "AddressSanitizer + UndefinedBehaviorSanitizer build"
+        },
+        {
+            "label": "cmake: build (asan)",
+            "type": "shell",
+            "command": "sh",
+            "args": [
+                "-c",
+                "test -f '${workspaceFolder}/build-asan/CMakeCache.txt' || cmake -S '${workspaceFolder}' -B '${workspaceFolder}/build-asan' -G Ninja -DCMAKE_BUILD_TYPE=Debug -DEMERON_ASAN=ON; cmake --build '${workspaceFolder}/build-asan'"
+            ],
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "detail": "Configure if needed, then build the sanitizer tree"
+        },
+        {
+            "label": "ctest",
+            "type": "shell",
+            "command": "ctest",
+            "args": [
+                "--test-dir",
+                "${workspaceFolder}/build",
+                "--output-on-failure"
+            ],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "problemMatcher": [],
+            "dependsOn": [
+                "cmake: build"
+            ]
+        },
+        {
+            "label": "run unit tests (verbose)",
+            "type": "shell",
+            "command": "${workspaceFolder}/build/tests/emeron_tests",
+            "problemMatcher": [],
+            "detail": "Per-case output rather than ctest's single-line summary",
+            "dependsOn": [
+                "cmake: build"
+            ]
+        },
+        {
+            "label": "clean",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${workspaceFolder}/build",
+                "--target",
+                "clean"
+            ],
+            "problemMatcher": []
+        }
+    ]
+}

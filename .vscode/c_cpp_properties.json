@@ -1,0 +1,107 @@
+{
+    // Why IntelliSense needs this file:
+    //
+    // emeron includes its own headers rooted at src/ ("core/Log.h", not
+    // "../../core/Log.h"), and imgui/implot/glfw live in vendor/. Without
+    // those roots, every #include fails to resolve and the whole file goes red.
+    //
+    // Three mechanisms are set up, and cpptools uses the first that works:
+    //   1. configurationProvider -- CMake Tools hands over the exact flags
+    //      for each file. Most accurate; needs the project configured once.
+    //   2. compileCommands -- build/compile_commands.json, which CMake
+    //      writes because CMAKE_EXPORT_COMPILE_COMMANDS is ON.
+    //   3. includePath/defines below -- a static fallback so a freshly
+    //      cloned tree is still navigable before the first configure. These
+    //      point at vendor/, which is committed, rather than at a build
+    //      directory that may not exist yet.
+    "version": 4,
+    "configurations": [
+        {
+            "name": "Mac",
+            "configurationProvider": "ms-vscode.cmake-tools",
+            "compileCommands": "${workspaceFolder}/build/compile_commands.json",
+            "compilerPath": "/usr/bin/clang++",
+            "cStandard": "c11",
+            "cppStandard": "c++20",
+            "intelliSenseMode": "macos-clang-arm64",
+            "includePath": [
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/tests",
+                "${workspaceFolder}/vendor/imgui",
+                "${workspaceFolder}/vendor/imgui/backends",
+                "${workspaceFolder}/vendor/imgui/misc/cpp",
+                "${workspaceFolder}/vendor/implot",
+                "${workspaceFolder}/vendor/glfw/include"
+            ],
+            "defines": [
+                "GL_SILENCE_DEPRECATION"
+            ],
+            "macFrameworkPath": [
+                "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks",
+                "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks"
+            ],
+            "browse": {
+                "path": [
+                    "${workspaceFolder}/src",
+                    "${workspaceFolder}/tests"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            }
+        },
+        {
+            "name": "Linux",
+            "configurationProvider": "ms-vscode.cmake-tools",
+            "compileCommands": "${workspaceFolder}/build/compile_commands.json",
+            "compilerPath": "/usr/bin/g++",
+            "cStandard": "c11",
+            "cppStandard": "c++20",
+            "intelliSenseMode": "linux-gcc-x64",
+            "includePath": [
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/tests",
+                "${workspaceFolder}/vendor/imgui",
+                "${workspaceFolder}/vendor/imgui/backends",
+                "${workspaceFolder}/vendor/imgui/misc/cpp",
+                "${workspaceFolder}/vendor/implot",
+                "${workspaceFolder}/vendor/glfw/include"
+            ],
+            "browse": {
+                "path": [
+                    "${workspaceFolder}/src",
+                    "${workspaceFolder}/tests"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            }
+        },
+        {
+            "name": "Win32",
+            "configurationProvider": "ms-vscode.cmake-tools",
+            "compileCommands": "${workspaceFolder}/build/compile_commands.json",
+            "cStandard": "c11",
+            "cppStandard": "c++20",
+            "intelliSenseMode": "windows-msvc-x64",
+            "includePath": [
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/tests",
+                "${workspaceFolder}/vendor/imgui",
+                "${workspaceFolder}/vendor/imgui/backends",
+                "${workspaceFolder}/vendor/imgui/misc/cpp",
+                "${workspaceFolder}/vendor/implot",
+                "${workspaceFolder}/vendor/glfw/include"
+            ],
+            "defines": [
+                "_WIN32",
+                "WIN32_LEAN_AND_MEAN",
+                "NOMINMAX",
+                "_CRT_SECURE_NO_WARNINGS"
+            ],
+            "browse": {
+                "path": [
+                    "${workspaceFolder}/src",
+                    "${workspaceFolder}/tests"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            }
+        }
+    ]
+}

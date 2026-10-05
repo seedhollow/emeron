@@ -1,0 +1,68 @@
+{
+    // --- CMake Tools ------------------------------------------------------
+    // Keeping the build directory at ./build means CMake Tools, the tasks in
+    // tasks.json and the compileCommands path in c_cpp_properties.json all
+    // agree on one location.
+    "cmake.buildDirectory": "${workspaceFolder}/build",
+    "cmake.generator": "Ninja",
+    "cmake.configureOnOpen": true,
+    "cmake.configureSettings": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": true
+    },
+    // The build type comes from the CMake Tools status bar, not from here; a
+    // partial cmake.defaultVariants would replace its built-in choices. Note
+    // that switching the variant reconfigures ./build in place, which is fine
+    // -- the tasks in tasks.json only force a build type when there is no
+    // cache yet.
+
+    // --- IntelliSense -----------------------------------------------------
+    // CMake Tools is the source of truth for compile flags. If it ever stops
+    // responding, cpptools falls back to build/compile_commands.json and then
+    // to the static includePath in c_cpp_properties.json.
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+    "C_Cpp.default.compileCommands": "${workspaceFolder}/build/compile_commands.json",
+    "C_Cpp.default.cppStandard": "c++20",
+    "C_Cpp.default.cStandard": "c11",
+    "C_Cpp.intelliSenseEngine": "default",
+    "C_Cpp.errorSquiggles": "enabled",
+
+    // Formatting follows the project's .clang-format. Not enabled on save --
+    // that is a personal preference, turn on editor.formatOnSave if you want it.
+    "C_Cpp.formatting": "clangFormat",
+    "C_Cpp.clang_format_style": "file",
+    "[cpp]": {
+        "editor.defaultFormatter": "ms-vscode.cpptools",
+        "editor.tabSize": 4,
+        "editor.rulers": [
+            96
+        ]
+    },
+    "[c]": {
+        "editor.defaultFormatter": "ms-vscode.cpptools",
+        "editor.tabSize": 4
+    },
+
+    // --- Workspace noise --------------------------------------------------
+    // vendor/ holds the imgui, implot and glfw sources. They stay on the
+    // include path so go-to-definition reaches them, but are kept out of text
+    // search -- otherwise every lookup drowns in imgui internals.
+    "files.exclude": {
+        "**/.DS_Store": true
+    },
+    "search.exclude": {
+        "build/**": true,
+        "vendor/**": true,
+        "build-*/**": true,
+        "cmake-build-*/**": true
+    },
+    "files.watcherExclude": {
+        "**/build/**": true,
+        "**/build-*/**": true
+    },
+    "files.associations": {
+        "*.pbtxt": "proto",
+        "*.inl": "cpp"
+    },
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true
+}

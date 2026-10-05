@@ -1,0 +1,10 @@
+build/
+build-*/
+cmake-build-*/
+out/
+.cache/
+compile_commands.json
+imgui.ini
+.DS_Store
+*.perfetto-trace
+*.pftrace

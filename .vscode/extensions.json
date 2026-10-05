@@ -1,0 +1,12 @@
+{
+    "recommendations": [
+        "ms-vscode.cpptools",
+        "ms-vscode.cmake-tools",
+        "twxs.cmake"
+    ],
+    // clangd and cpptools both provide IntelliSense and fight over it. Pick
+    // one; this project is set up for cpptools + CMake Tools.
+    "unwantedRecommendations": [
+        "llvm-vs-code-extensions.vscode-clangd"
+    ]
+}

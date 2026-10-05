@@ -1,0 +1,149 @@
+# `adb shell dumpsys package com.android.chrome` from an Android 14 phone, trimmed:
+# long lists cut to their first four items, install-specific path segments replaced.
+Activity Resolver Table:
+  Full MIME Types:
+      multipart/related:
+        36766fd com.android.chrome/com.google.android.apps.chrome.IntentDispatcher filter e1e439f
+          Action: "android.intent.action.VIEW"
+          Category: "android.intent.category.DEFAULT"
+          Category: "android.intent.category.BROWSABLE"
+  Non-Data Actions:
+      android.intent.action.MAIN:
+        3b7a320 com.android.chrome/com.google.android.apps.chrome.Main filter a45fd7f
+          Action: "com.samsung.android.support.REMOTE_ACTION"
+        243d14c com.android.chrome/org.chromium.chrome.browser.ChromeTabbedActivity2 filter 7aca6aa
+          Action: "com.samsung.android.support.REMOTE_ACTION"
+Service Resolver Table:
+  Non-Data Actions:
+      com.google.android.gms.wallet.callback.PAYMENT_DATA_CALLBACKS:
+        eaca51a com.android.chrome/org.chromium.components.payments.GooglePayDataCallbacksService filter 5ec684b permission com.google.android.gms.permission.BIND_PAYMENTS_CALLBACK_SERVICE
+          Action: "com.google.android.gms.wallet.callback.PAYMENT_DATA_CALLBACKS"
+Receiver Resolver Table:
+  Schemes:
+      package:
+        a81a357 com.android.chrome/org.chromium.chrome.browser.browserservices.InstalledWebappBroadcastReceiver filter 5413e44
+          Action: "android.intent.action.PACKAGE_DATA_CLEARED"
+          Action: "android.intent.action.PACKAGE_FULLY_REMOVED"
+Registered ContentProviders:
+  com.android.chrome/org.chromium.chrome.browser.autofill.AutofillThirdPartyModeContentProvider:
+    Provider{a6a2961 com.android.chrome/org.chromium.chrome.browser.autofill.AutofillThirdPartyModeContentProvider}
+  com.android.chrome/org.chromium.chrome.browser.provider.ChromeBrowserProvider:
+    Provider{9d55c86 com.android.chrome/org.chromium.chrome.browser.provider.ChromeBrowserProvider}
+ContentProvider Authorities:
+  [com.android.chrome.ScreenshotContentProvider]:
+    Provider{9cd52e3 com.android.chrome/org.chromium.chrome.browser.screenshotprovider.ScreenshotContentProvider}
+      applicationInfo=ApplicationInfo{6e5765e com.android.chrome}
+  [com.android.chrome.DropDataProvider]:
+    Provider{83efa9d com.android.chrome/org.chromium.ui.dragdrop.DropDataContentProvider}
+      applicationInfo=ApplicationInfo{4783a3f com.android.chrome}
+
+Packages:
+  Package [com.android.chrome] (a78c50d):
+    appId=10131
+    pkg=Package{6840cc2 com.android.chrome}
+    codePath=/data/app/~~AAAAAAAAAAAAAAAAAAAAAA==/com.android.chrome-BBBBBBBBBBBBBBBBBBBBBB==
+    resourcePath=/data/app/~~AAAAAAAAAAAAAAAAAAAAAA==/com.android.chrome-BBBBBBBBBBBBBBBBBBBBBB==
+    legacyNativeLibraryDir=/data/app/~~AAAAAAAAAAAAAAAAAAAAAA==/com.android.chrome-BBBBBBBBBBBBBBBBBBBBBB==/lib
+    extractNativeLibs=false
+    primaryCpuAbi=arm64-v8a
+    secondaryCpuAbi=null
+    cpuAbiOverride=null
+    versionCode=803709404 minSdk=32 targetSdk=36
+    minExtensionVersions=[]
+    versionName=154.0.8037.94
+    usesNonSdkApi=false
+    splits=[base, chrome, config.en, config.id, config.in, dev_ui, on_demand, stack_unwinder]
+    apkSigningVersion=3
+    flags=[ SYSTEM HAS_CODE ALLOW_CLEAR_USER_DATA UPDATED_SYSTEM_APP ALLOW_BACKUP KILL_AFTER_RESTORE RESTORE_ANY_VERSION ]
+    privateFlags=[ PRIVATE_FLAG_ACTIVITIES_RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION ALLOW_AUDIO_PLAYBACK_CAPTURE ISOLATED_SPLIT_LOADING PARTIALLY_DIRECT_BOOT_AWARE PRODUCT PRIVATE_FLAG_ALLOW_NATIVE_HEAP_POINTER_TAGGING ]
+    forceQueryable=false
+    queriesPackages=[com.google.ar.core]
+    dataDir=/data/user/0/com.android.chrome
+    supportsScreens=[small, medium, large, xlarge, resizeable, anyDensity]
+    usesOptionalLibraries:
+      androidx.window.extensions
+      androidx.window.sidecar
+      android.car
+      androidx.window.extensions
+      android.ext.adservices
+    usesOptionalNativeLibraries:
+      libopenxr.google.so
+    timeStamp=2026-10-04 01:03:05
+    lastUpdateTime=2026-10-04 01:03:07
+    installerPackageName=com.android.vending
+    installerPackageUid=10122
+    initiatingPackageName=com.android.vending
+    originatingPackageName=null
+    packageSource=0
+    appMetadataFilePath=/data/app/~~AAAAAAAAAAAAAAAAAAAAAA==/com.android.chrome-BBBBBBBBBBBBBBBBBBBBBB==/app.metadata
+    signatures=PackageSignatures{228bad3 version:3, signatures:[e3ca78d8], past signatures:[]}
+    installPermissionsFixed=true
+    pkgFlags=[ SYSTEM HAS_CODE ALLOW_CLEAR_USER_DATA UPDATED_SYSTEM_APP ALLOW_BACKUP KILL_AFTER_RESTORE RESTORE_ANY_VERSION ]
+    privatePkgFlags=[ PRIVATE_FLAG_ACTIVITIES_RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION ALLOW_AUDIO_PLAYBACK_CAPTURE ISOLATED_SPLIT_LOADING PARTIALLY_DIRECT_BOOT_AWARE PRODUCT PRIVATE_FLAG_ALLOW_NATIVE_HEAP_POINTER_TAGGING ]
+    apexModuleName=null
+    declared permissions:
+      com.android.chrome.permission.CHILD_SERVICE: prot=signature
+      com.android.chrome.permission.READ_WRITE_BOOKMARK_FOLDERS: prot=signature|privileged
+      com.android.chrome.TOS_ACKED: prot=signature|privileged
+      com.android.chrome.permission.C2D_MESSAGE: prot=signature
+    requested permissions:
+      android.permission.ACCESS_COARSE_LOCATION
+      android.permission.ACCESS_FINE_LOCATION
+      android.permission.ACCESS_WIFI_STATE
+      android.permission.ACCESS_NETWORK_STATE
+    install permissions:
+      android.permission.DOWNLOAD_WITHOUT_NOTIFICATION: granted=true
+      android.permission.FOREGROUND_SERVICE_CAMERA: granted=true
+      com.google.android.c2dm.permission.RECEIVE: granted=true
+      android.permission.USE_CREDENTIALS: granted=true
+    User 0: ceDataInode=1234 installed=true hidden=false suspended=false distractionFlags=0 stopped=false notLaunched=false enabled=0 instant=false virtual=false
+      installReason=0
+      firstInstallTime=2009-01-01 07:00:00
+      uninstallReason=0
+      overlay paths:
+        /product/overlay/NavigationBarModeGestural/NavigationBarModeGesturalOverlay.apk
+        /product/overlay/IconDefaultShape.apk
+        /data/resource-cache/com.android.systemui-neutral-A94e.frro
+        /data/resource-cache/com.android.systemui-accent-lj2o.frro
+      legacy overlay paths:
+        /product/overlay/NavigationBarModeGestural/NavigationBarModeGesturalOverlay.apk
+        /product/overlay/IconDefaultShape.apk
+      lastDisabledCaller: com.android.vending
+      gids=[3002, 3003]
+      runtime permissions:
+        android.permission.POST_NOTIFICATIONS: granted=true, flags=[ USER_SET|USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
+        android.permission.ACCESS_FINE_LOCATION: granted=true, flags=[ GRANTED_BY_DEFAULT|USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED|GRANTED_BY_ROLE]
+        android.permission.BLUETOOTH_CONNECT: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
+        android.permission.READ_EXTERNAL_STORAGE: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED|RESTRICTION_INSTALLER_EXEMPT|RESTRICTION_UPGRADE_EXEMPT]
+      disabledComponents:
+        org.chromium.chrome.browser.media.MediaLauncherActivity
+        org.chromium.chrome.browser.media.AudioLauncherActivity
+      enabledComponents:
+        org.chromium.chrome.browser.quickactionsearchwidget.QuickActionSearchWidgetProvider$QuickActionSearchWidgetProviderDino
+        org.chromium.chrome.browser.incognito.IncognitoTabLauncher
+        org.chromium.chrome.browser.quickactionsearchwidget.QuickActionSearchWidgetProvider$QuickActionSearchWidgetProviderSearch
+
+Hidden system packages:
+  Package [com.android.chrome] (6760610):
+    appId=10131
+    pkg=Package{679a509 com.android.chrome}
+    codePath=/product/app/Chrome
+    resourcePath=/product/app/Chrome
+    legacyNativeLibraryDir=/product/app/Chrome/lib
+    extractNativeLibs=false
+    primaryCpuAbi=armeabi-v7a
+    secondaryCpuAbi=arm64-v8a
+    cpuAbiOverride=null
+    versionCode=616717831 minSdk=29 targetSdk=34
+    minExtensionVersions=[]
+    versionName=121.0.6167.178
+
+Dexopt state:
+  [com.android.chrome]
+    path: /data/app/~~AAAAAAAAAAAAAAAAAAAAAA==/com.android.chrome-BBBBBBBBBBBBBBBBBBBBBB==/base.apk
+      arm64: [status=speed-profile] [reason=cmdline] [primary-abi]
+        [location is /data/app/~~AAAAAAAAAAAAAAAAAAAAAA==/com.android.chrome-BBBBBBBBBBBBBBBBBBBBBB==/oat/arm64/base.odex]
+        [image location is /data/app/~~AAAAAAAAAAAAAAAAAAAAAA==/com.android.chrome-BBBBBBBBBBBBBBBBBBBBBB==/oat/arm64/base.art (required)]
+    path: /data/app/~~AAAAAAAAAAAAAAAAAAAAAA==/com.android.chrome-BBBBBBBBBBBBBBBBBBBBBB==/split_chrome.apk
+      arm64: [status=speed-profile] [reason=cmdline] [primary-abi]
+        [location is /data/app/~~AAAAAAAAAAAAAAAAAAAAAA==/com.android.chrome-BBBBBBBBBBBBBBBBBBBBBB==/oat/arm64/split_chrome.odex]

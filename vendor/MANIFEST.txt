@@ -1,0 +1,89 @@
+emeron vendored dependencies
+============================
+
+Exact upstream revisions. Keep this in sync with the *_TAG values in
+cmake/Dependencies.cmake -- the build prints which origin it used, and these
+are what `-DEMERON_VENDORED=OFF` would download instead.
+
+dear imgui
+  repository  https://github.com/ocornut/imgui.git
+  tag         v1.92.9b-docking
+  commit      b48d1afbe8ee8b238e2961dc363a949dd7304e23
+  license     MIT (vendor/imgui/LICENSE.txt)
+  note        The docking branch, not master: emeron needs
+              ImGuiConfigFlags_DockingEnable and ViewportsEnable.
+  pruned      examples/, docs/, misc/ except misc/cpp, every backend except
+              glfw + opengl3. Kept imgui_demo.cpp -- Help -> Dear ImGui demo
+              uses it and it is the reference for widget usage.
+  patched     imgui_tables.cpp, 3 spots marked "EMERON PATCH": a table
+              column's stretch weight could become NaN (0/0 when the table
+              was laid out at zero width), was saved to imgui.ini as
+              "Weight=nan", and collapsed the column on every launch -- the
+              Log panel's Message column wrapped one character per line.
+              The patch guards both divisions and ignores a saved weight
+              that is not a positive finite number.
+              Test: tests/test_table_settings.cpp. Re-apply on every update.
+
+implot
+  repository  https://github.com/epezent/implot.git
+  tag         v1.0
+  commit      524f9fcd48d76c13fdf94c5ffbba8787a1ff7e39
+  license     MIT (vendor/implot/LICENSE)
+  note        v1.0 replaced the SetNextLineStyle/ImPlotStyle per-item fields
+              with ImPlotSpec. Code in src/ui/panels uses the v1.0 API; do not
+              downgrade without updating it.
+  pruned      example/, README.md, TODO.md
+
+glfw
+  repository  https://github.com/glfw/glfw.git
+  tag         3.4
+  commit      7b6aead9fb88b3623e3b3725ebb42670cbe4c579
+  license     Zlib/libpng (vendor/glfw/LICENSE.md)
+  note        Built through its own CMakeLists via add_subdirectory.
+  pruned      docs/, examples/, tests/, and every deps/ entry except:
+                deps/wayland  -- protocol XML the Linux Wayland backend
+                                 generates headers from (src/CMakeLists.txt:80)
+                deps/mingw    -- headers the MinGW Windows build needs
+                                 (src/CMakeLists.txt:277)
+              Everything else under deps/ (glad, nuklear, getopt, tinycthread,
+              linmath, stb_image_write) is used only by examples and tests,
+              which GLFW_BUILD_EXAMPLES/TESTS=OFF never configures.
+
+nativefiledialog-extended
+  repository  https://github.com/btzy/nativefiledialog-extended.git
+  tag         v1.4.1
+  commit      65b2f070a0fcfee0d453a64e770a217ab0b6ff4f
+  license     Zlib (vendor/nfd/LICENSE)
+  note        The OS Save / Choose Folder dialogs. Optional: on Linux it needs
+              gtk+-3.0 or dbus-1, and cmake/Dependencies.cmake builds without it
+              (in-app fallback prompt) when neither is installed.
+  pruned      test/, screens/, 3ps/, README.md. All five headers in
+              src/include are kept even though emeron only includes nfd.h and
+              nfd_glfw3.h -- upstream's src/CMakeLists.txt lists the SDL
+              helpers as sources and fails to configure without them.
+
+Font Awesome Free (Solid)
+  repository  https://github.com/FortAwesome/Font-Awesome.git
+  tag         6.7.2
+  commit      af620534bfc3c2d4cbefcfeec29603bbe7809e64
+  file        webfonts/fa-solid-900.ttf
+              sha256 af19d135d3a935b3ebfbd80320716ffe1202052c5f68dc2c5f1abc57005ac605
+  license     Font: SIL OFL 1.1. Icons: CC BY 4.0. (vendor/fontawesome/LICENSE.txt)
+  note        Embedded into the binary at build time by cmake/EmbedFile.cmake,
+              so this file stays byte-identical to upstream. Version 6, not 7:
+              7.x ships only .woff2, which stb_truetype cannot read.
+  pruned      everything but the Solid TTF and LICENSE.txt.
+
+IconFontCppHeaders
+  repository  https://github.com/juliettef/IconFontCppHeaders.git
+  commit      210b5a399a64270674560d633638952d1e8d804d
+  license     Zlib (vendor/IconFontCppHeaders/licence.txt)
+  note        IconsFontAwesome6.h -- the ICON_FA_* names, generated from the
+              Font Awesome 6.x metadata so it matches the font above.
+              tests/test_fonts.cpp checks that every one of its 1402 icons has a
+              glyph in the embedded font. Keep the two in step: a header from
+              one release beside a font from another compiles and draws boxes.
+  pruned      every file but IconsFontAwesome6.h and licence.txt.
+
+Not used: https://github.com/xo1337/FontAwesome. It pairs a Font Awesome 5 Pro
+header with a Font Awesome 4.7 font; only 462 of its 1853 icons (24%) render.
