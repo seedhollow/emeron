@@ -31,6 +31,7 @@ namespace {
 constexpr double kLiveSeconds = 1.0;  // pause between live captures
 constexpr const char* kSourceKey = "layout.source";
 constexpr const char* kShowHiddenKey = "layout.show_hidden";
+constexpr const char* kShowTreeKey = "layout.show_tree";
 constexpr const char* kMode3DKey = "layout.3d";
 
 constexpr const char* kSourceNames[] = {"Merged", "Views only", "Accessibility only"};
@@ -377,6 +378,31 @@ void LayoutInspectorPanel::rebuildRows() {
         return true;
     };
     for (const int r : roots_) visit(r, 0);
+
+    // The rows are drawn by hand, so ImGui cannot tell how far they reach. Measure
+    // the widest one here, for the horizontal scroll range.
+    const float indent = ImGui::GetFontSize() * 0.9F;
+    const float arrowW = ImGui::GetFontSize();
+    treeWidth_ = 0.0F;
+    for (const Row& row : rows_) {
+        const LayoutNode& n = nodes[static_cast<std::size_t>(row.node)];
+        const std::string_view name =
+            n.simpleName().empty() ? std::string_view{"(view)"} : n.simpleName();
+        const std::string id =
+            n.resourceId.empty() ? std::string{} : "  #" + std::string{n.idName()};
+        const std::string& label = !n.text.empty() ? n.text : n.contentDescription;
+        const std::string quoted =
+            label.empty() ? std::string{} : "  \"" + shortened(label, 40) + "\"";
+        float w = static_cast<float>(row.depth) * indent + arrowW;
+        if (n.origin == LayoutNode::Origin::Accessibility) {
+            w += ImGui::CalcTextSize(ICON_FA_UNIVERSAL_ACCESS).x + 4.0F;
+        }
+        w += ImGui::CalcTextSize(name.data(), name.data() + name.size()).x;
+        w += ImGui::CalcTextSize(id.c_str()).x;
+        w += ImGui::CalcTextSize(quoted.c_str()).x;
+        if (n.visibility != ViewVisibility::Visible) w += ImGui::CalcTextSize("  INVISIBLE").x;
+        treeWidth_ = std::max(treeWidth_, w);
+    }
 }
 
 bool LayoutInspectorPanel::visibleInTree(int node) const {
@@ -405,6 +431,7 @@ void LayoutInspectorPanel::draw(AppContext& context) {
         source_ = static_cast<LayoutSource>(
             std::clamp<long long>(context.prefs.getInt(kSourceKey, 0), 0, 2));
         showHidden_ = context.prefs.getBool(kShowHiddenKey, false);
+        showTree_ = context.prefs.getBool(kShowTreeKey, true);
         mode3D_ = context.prefs.getBool(kMode3DKey, false);
     }
     if (!ImGui::Begin(windowTitle(), visibleFlag())) {
@@ -472,13 +499,20 @@ void LayoutInspectorPanel::draw(AppContext& context) {
     if (!focus.pickOnScreen) focus.hovered = -1;
 
     const ImGuiTableFlags flags = ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV;
-    if (ImGui::BeginTable("##layout", 3, flags, ImGui::GetContentRegionAvail())) {
-        ImGui::TableSetupColumn("tree", ImGuiTableColumnFlags_WidthStretch, 0.30F);
-        ImGui::TableSetupColumn("canvas", ImGuiTableColumnFlags_WidthStretch, 0.44F);
-        ImGui::TableSetupColumn("details", ImGuiTableColumnFlags_WidthStretch, 0.26F);
+    if (ImGui::BeginTable("##layout", showTree_ ? 3 : 2, flags,
+                          ImGui::GetContentRegionAvail())) {
+        if (showTree_) {
+            ImGui::TableSetupColumn("tree", ImGuiTableColumnFlags_WidthStretch, 0.30F);
+        }
+        ImGui::TableSetupColumn("canvas", ImGuiTableColumnFlags_WidthStretch,
+                                showTree_ ? 0.44F : 0.60F);
+        ImGui::TableSetupColumn("details", ImGuiTableColumnFlags_WidthStretch,
+                                showTree_ ? 0.26F : 0.40F);
         ImGui::TableNextRow();
-        ImGui::TableNextColumn();
-        drawTree(context);
+        if (showTree_) {
+            ImGui::TableNextColumn();
+            drawTree(context);
+        }
         ImGui::TableNextColumn();
         drawCanvas(context);
         ImGui::TableNextColumn();
@@ -605,6 +639,10 @@ void LayoutInspectorPanel::drawToolbar(AppContext& context) {
     widgets::toggleButton(ICON_FA_BORDER_ALL, &wireframe_, "Outline every view.");
     ImGui::SameLine();
     widgets::toggleButton(ICON_FA_IMAGE, &showScreenshot_, "Show the screenshot.");
+    ImGui::SameLine();
+    if (widgets::toggleButton(ICON_FA_LIST_UL, &showTree_, "Show the view tree.")) {
+        context.prefs.setBool(kShowTreeKey, showTree_);
+    }
 
     if (mode3D_) {
         widgets::sameLineOrWrap(120.0F);
@@ -723,6 +761,9 @@ void LayoutInspectorPanel::drawTree(AppContext& context) {
         }
         if (ImGui::IsKeyPressed(ImGuiKey_Escape)) focus.selected = -1;
     }
+
+    // Gives the scroll range its width; a zero-height item moves nothing down.
+    ImGui::Dummy({treeWidth_, 0.0F});
 
     int revealRow = -1;
     if (focus.revealSelected) {

@@ -70,7 +70,9 @@ private:
     bool rowsDirty_ = true;
     std::string filter_;
     bool showHidden_ = false;
+    bool showTree_ = true;
     bool focusFilter_ = false;
+    float treeWidth_ = 0.0F;  // the widest row, so the tree scrolls sideways
 
     // Canvas.
     bool mode3D_ = false;
