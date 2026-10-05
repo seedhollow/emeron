@@ -13,6 +13,7 @@
 #include "core/Log.h"
 #include "core/StringUtil.h"
 #include "core/TaskQueue.h"
+#include "ui/Notifications.h"
 #include "ui/Widgets.h"
 
 namespace em {
@@ -447,6 +448,33 @@ void PerfettoPanel::drawExploreTab(AppContext& context) {
 }
 
 void PerfettoPanel::draw(AppContext& context) {
+    // Before Begin(): a capture finishing while this tab is hidden still
+    // gets its toast.
+    {
+        const CaptureStatus status = context.perfetto.status();
+        if (status.phase != lastPhase_) {
+            if (status.phase == CaptureStatus::Phase::Done) {
+                const auto path = status.localPath;
+                notify::postWithAction(notify::Kind::Success, "Trace captured", status.message,
+                                       ICON_FA_MAGNIFYING_GLASS_CHART "  Open in Explore",
+                                       [this, &context, path] {
+                                           openedTrace_ = path;
+                                           if (auto opened = context.traceProcessor.openTrace(path); !opened) {
+                                               queryError_ = opened.error().message;
+                                           } else {
+                                               queryError_.clear();
+                                           }
+                                           traceListLoaded_ = false;
+                                           setVisible(true);
+                                           ImGui::SetWindowFocus(windowKey(kId).c_str());
+                                       });
+            } else if (status.phase == CaptureStatus::Phase::Failed) {
+                notify::error("Trace capture failed", status.message);
+            }
+            lastPhase_ = status.phase;
+        }
+    }
+
     if (!ImGui::Begin(windowTitle(), visibleFlag())) {
         ImGui::End();
         return;

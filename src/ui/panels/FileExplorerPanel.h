@@ -90,6 +90,8 @@ private:
     void requestNewFolder();
     void openEntry(AppContext& context, const FileEntry& entry);
     void onOperationDone(AppContext& context, TransferStatus status);
+    // Records the status and, once it is finished, posts a toast.
+    void setStatus(AppContext& context, TransferStatus status);
     [[nodiscard]] FileSystemBrowser::Callback reloadAfter(AppContext& context);
 
     DirListing listing_;

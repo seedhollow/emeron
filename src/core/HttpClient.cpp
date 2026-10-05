@@ -8,210 +8,14 @@
 #include <utility>
 
 #include "core/StringUtil.h"
+#include "core/TcpSocket.h"
 
 #if defined(_WIN32)
-#  include <winsock2.h>
-#  include <ws2tcpip.h>
-using SocketHandle = SOCKET;
-using socklen_t = int;
-#  define EM_INVALID_SOCKET INVALID_SOCKET
-#  define EM_CLOSE_SOCKET closesocket
-#else
-#  include <arpa/inet.h>
-#  include <fcntl.h>
-#  include <netdb.h>
-#  include <netinet/in.h>
-#  include <netinet/tcp.h>
-#  include <poll.h>
-#  include <sys/socket.h>
-#  include <unistd.h>
-using SocketHandle = int;
-#  define EM_INVALID_SOCKET (-1)
-#  define EM_CLOSE_SOCKET ::close
+#  include <winsock2.h>  // WSAStartup
 #endif
 
 namespace em {
 namespace {
-
-std::string lastSocketError() {
-#if defined(_WIN32)
-    return "winsock error " + std::to_string(::WSAGetLastError());
-#else
-    return std::strerror(errno);
-#endif
-}
-
-// RAII socket so every early return closes the descriptor.
-class Socket {
-public:
-    Socket() = default;
-    explicit Socket(SocketHandle h) : handle_(h) {}
-    ~Socket() { reset(); }
-
-    Socket(const Socket&) = delete;
-    Socket& operator=(const Socket&) = delete;
-    Socket(Socket&& other) noexcept : handle_(other.release()) {}
-    Socket& operator=(Socket&& other) noexcept {
-        if (this != &other) {
-            reset();
-            handle_ = other.release();
-        }
-        return *this;
-    }
-
-    [[nodiscard]] SocketHandle get() const noexcept { return handle_; }
-    [[nodiscard]] bool valid() const noexcept { return handle_ != EM_INVALID_SOCKET; }
-
-    SocketHandle release() noexcept {
-        SocketHandle h = handle_;
-        handle_ = EM_INVALID_SOCKET;
-        return h;
-    }
-    void reset() noexcept {
-        if (valid()) EM_CLOSE_SOCKET(handle_);
-        handle_ = EM_INVALID_SOCKET;
-    }
-
-private:
-    SocketHandle handle_ = EM_INVALID_SOCKET;
-};
-
-Result<Socket> connectTo(const std::string& host, std::uint16_t port, int timeoutMs) {
-    addrinfo hints{};
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_protocol = IPPROTO_TCP;
-
-    addrinfo* list = nullptr;
-    const std::string portStr = std::to_string(port);
-    if (::getaddrinfo(host.c_str(), portStr.c_str(), &hints, &list) != 0 || list == nullptr) {
-        return makeError(ErrorKind::NotFound, "cannot resolve " + host);
-    }
-
-    Error lastError = makeError(ErrorKind::Io, "no addresses tried");
-    for (const addrinfo* ai = list; ai != nullptr; ai = ai->ai_next) {
-        Socket sock{::socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol)};
-        if (!sock.valid()) {
-            lastError = makeError(ErrorKind::Io, "socket(): " + lastSocketError());
-            continue;
-        }
-
-        const int one = 1;
-        ::setsockopt(sock.get(), IPPROTO_TCP, TCP_NODELAY,
-                     reinterpret_cast<const char*>(&one), sizeof(one));
-
-#if defined(_WIN32)
-        unsigned long nonblock = 1;
-        ::ioctlsocket(sock.get(), FIONBIO, &nonblock);
-#else
-        const int flags = ::fcntl(sock.get(), F_GETFL, 0);
-        ::fcntl(sock.get(), F_SETFL, flags | O_NONBLOCK);
-#endif
-
-        int rc = ::connect(sock.get(), ai->ai_addr, static_cast<socklen_t>(ai->ai_addrlen));
-        if (rc != 0) {
-#if defined(_WIN32)
-            const bool inProgress = ::WSAGetLastError() == WSAEWOULDBLOCK;
-#else
-            const bool inProgress = errno == EINPROGRESS;
-#endif
-            if (!inProgress) {
-                lastError = makeError(ErrorKind::Io, "connect(): " + lastSocketError());
-                continue;
-            }
-
-#if defined(_WIN32)
-            fd_set writeSet;
-            FD_ZERO(&writeSet);
-            FD_SET(sock.get(), &writeSet);
-            timeval tv{timeoutMs / 1000, (timeoutMs % 1000) * 1000};
-            rc = ::select(0, nullptr, &writeSet, nullptr, &tv);
-#else
-            pollfd pfd{};
-            pfd.fd = sock.get();
-            pfd.events = POLLOUT;
-            rc = ::poll(&pfd, 1, timeoutMs);
-#endif
-            if (rc <= 0) {
-                lastError = makeError(ErrorKind::Timeout,
-                                      "connect to " + host + ":" + portStr + " timed out");
-                continue;
-            }
-
-            int soError = 0;
-            socklen_t len = sizeof(soError);
-            ::getsockopt(sock.get(), SOL_SOCKET, SO_ERROR,
-                         reinterpret_cast<char*>(&soError), &len);
-            if (soError != 0) {
-                lastError = makeError(ErrorKind::Io, "connect failed (errno " +
-                                                         std::to_string(soError) + ")");
-                continue;
-            }
-        }
-
-        // Back to blocking; reads and writes are bounded by poll() below.
-#if defined(_WIN32)
-        unsigned long blocking = 0;
-        ::ioctlsocket(sock.get(), FIONBIO, &blocking);
-#else
-        const int f2 = ::fcntl(sock.get(), F_GETFL, 0);
-        ::fcntl(sock.get(), F_SETFL, f2 & ~O_NONBLOCK);
-#endif
-        ::freeaddrinfo(list);
-        return std::move(sock);
-    }
-
-    ::freeaddrinfo(list);
-    return lastError;
-}
-
-Status sendAll(SocketHandle sock, std::string_view data) {
-    std::size_t sent = 0;
-    while (sent < data.size()) {
-        const auto n = ::send(sock, data.data() + sent,
-#if defined(_WIN32)
-                              static_cast<int>(data.size() - sent),
-#else
-                              data.size() - sent,
-#endif
-                              0);
-        if (n <= 0) {
-#if !defined(_WIN32)
-            if (errno == EINTR) continue;
-#endif
-            return makeError(ErrorKind::Io, "send(): " + lastSocketError());
-        }
-        sent += static_cast<std::size_t>(n);
-    }
-    return {};
-}
-
-Result<std::size_t> recvSome(SocketHandle sock, std::span<char> dst, int timeoutMs) {
-#if defined(_WIN32)
-    fd_set readSet;
-    FD_ZERO(&readSet);
-    FD_SET(sock, &readSet);
-    timeval tv{timeoutMs / 1000, (timeoutMs % 1000) * 1000};
-    const int rc = ::select(0, &readSet, nullptr, nullptr, &tv);
-#else
-    pollfd pfd{};
-    pfd.fd = sock;
-    pfd.events = POLLIN;
-    const int rc = ::poll(&pfd, 1, timeoutMs);
-#endif
-    if (rc == 0) return makeError(ErrorKind::Timeout, "read timed out");
-    if (rc < 0) return makeError(ErrorKind::Io, "poll(): " + lastSocketError());
-
-    const auto n = ::recv(sock, dst.data(),
-#if defined(_WIN32)
-                          static_cast<int>(dst.size()),
-#else
-                          dst.size(),
-#endif
-                          0);
-    if (n < 0) return makeError(ErrorKind::Io, "recv(): " + lastSocketError());
-    return static_cast<std::size_t>(n);
-}
 
 // Parses "HTTP/1.1 200 OK" + headers. Returns the body offset.
 Result<std::size_t> parseHead(std::string_view raw, HttpResponse& out) {
@@ -290,13 +94,13 @@ HttpClient::HttpClient(std::string host, std::uint16_t port)
     : host_(std::move(host)), port_(port) {}
 
 bool HttpClient::canConnect(int timeoutMs) const {
-    return connectTo(host_, port_, timeoutMs).hasValue();
+    return TcpSocket::connect(host_, port_, timeoutMs).hasValue();
 }
 
 Result<HttpResponse> HttpClient::send(const HttpRequest& request) const {
-    auto connected = connectTo(host_, port_, std::min(request.timeoutMs, 2000));
+    auto connected = TcpSocket::connect(host_, port_, std::min(request.timeoutMs, 2000));
     if (!connected) return std::move(connected).error();
-    const Socket sock = std::move(connected).value();
+    TcpSocket sock = std::move(connected).value();
 
     std::string head;
     head.reserve(256 + request.body.size());
@@ -313,13 +117,13 @@ Result<HttpResponse> HttpClient::send(const HttpRequest& request) const {
     }
     head += "Content-Length: " + std::to_string(request.body.size()) + "\r\n\r\n";
 
-    EM_TRY_VOID(sendAll(sock.get(), head));
-    if (!request.body.empty()) EM_TRY_VOID(sendAll(sock.get(), request.body));
+    EM_TRY_VOID(sock.sendAll(head));
+    if (!request.body.empty()) EM_TRY_VOID(sock.sendAll(request.body));
 
     std::string raw;
     std::array<char, 32 * 1024> buffer{};
     for (;;) {
-        auto n = recvSome(sock.get(), buffer, request.timeoutMs);
+        auto n = sock.recvSome(buffer, request.timeoutMs);
         if (!n) {
             if (n.error().kind == ErrorKind::Timeout && !raw.empty()) break;
             return std::move(n).error();

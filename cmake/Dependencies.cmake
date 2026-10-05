@@ -142,6 +142,44 @@ target_link_libraries(implot PUBLIC imgui)
 add_library(implot::implot ALIAS implot)
 
 # ---------------------------------------------------------------------------
+# FFmpeg (libavcodec, libswscale) -- optional, found through pkg-config.
+#
+# Decodes the H.264 stream of the fast (scrcpy) screen mirror. Not vendored:
+# it is large, and a system build gets the platform's optimised decoders.
+# Missing it only means the mirror uses its `screencap` mode.
+#   macOS: brew install ffmpeg     Debian/Ubuntu: apt install libavcodec-dev libswscale-dev
+# ---------------------------------------------------------------------------
+option(EMERON_USE_FFMPEG "Use FFmpeg, when found, for the fast screen mirror" ON)
+set(EMERON_FFMPEG_FOUND FALSE)
+set(EMERON_FFMPEG_ORIGIN "not found -- screen mirror uses screencap only")
+if(EMERON_USE_FFMPEG)
+    find_package(PkgConfig QUIET)
+    if(PKG_CONFIG_FOUND)
+        pkg_check_modules(EMERON_FFMPEG QUIET IMPORTED_TARGET libavcodec libavutil libswscale)
+        if(EMERON_FFMPEG_FOUND)
+            set(EMERON_FFMPEG_ORIGIN "system (libavcodec ${EMERON_FFMPEG_libavcodec_VERSION})")
+        endif()
+    endif()
+else()
+    set(EMERON_FFMPEG_ORIGIN "disabled (EMERON_USE_FFMPEG=OFF)")
+endif()
+
+# ---------------------------------------------------------------------------
+# miniz -- inflate, for the gzip-compressed frames of the screen mirror.
+#
+# Always vendored: upstream's repository needs an amalgamation step to
+# produce the single miniz.c/miniz.h pair, which is what the release asset
+# (and vendor/miniz) is. Built without the ZIP-archive, stdio and time APIs,
+# and without the zlib-compatible names, so it cannot clash with a system zlib
+# that some other library links.
+# ---------------------------------------------------------------------------
+add_library(miniz STATIC "${EMERON_VENDOR_DIR}/miniz/miniz.c")
+target_include_directories(miniz SYSTEM PUBLIC "${EMERON_VENDOR_DIR}/miniz")
+target_compile_definitions(miniz PUBLIC
+    MINIZ_NO_ARCHIVE_APIS MINIZ_NO_STDIO MINIZ_NO_TIME MINIZ_NO_ZLIB_COMPATIBLE_NAMES)
+set_target_properties(miniz PROPERTIES C_STANDARD 99 POSITION_INDEPENDENT_CODE ON)
+
+# ---------------------------------------------------------------------------
 # nativefiledialog-extended -- the OS's own Save / Choose Folder dialogs.
 #
 # Optional by design. On macOS and Windows it needs nothing extra. On Linux

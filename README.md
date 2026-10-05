@@ -11,6 +11,7 @@ Five tools in one dockable window:
 | **Frame Time** | Frame-time timeline, jank percentiles, severity buckets, per-frame phase breakdown. Jank is judged as `dumpsys gfxinfo` judges it — by each frame's own deadline — across all of the app's windows | `dumpsys gfxinfo <pkg> framestats` |
 | **Device Files** | File manager: multi-select, cut/copy/paste, duplicate, rename, new folder, delete, upload, download, drag-and-drop | `ls -lA`, `cp`/`mv`/`rm`/`mkdir`, `adb pull`, `adb push` |
 | **Apps** | Every installed app; pick one to see version, SDK levels, installer, signing, permissions (grant/revoke runtime ones), components, APK files, storage, memory, compilation state and the raw dump. Open, force stop, save APK, clear data, uninstall | `pm list packages`, `dumpsys package`, `pm path`, `cmd appops`, `dumpsys meminfo`, `dumpsys diskstats` |
+| **Screen** | The device's screen, live. Click to tap, hold to long-press, drag to swipe, wheel to scroll; Back/Home/Recents/Power/Volume; type into the phone; save screenshots | scrcpy server + FFmpeg (fast), or `screencap \| gzip -1` + `input` (compatible) |
 | **Device Info** | Build, SoC, display, storage, network, tracing posture, and the full raw `getprop` | `getprop` + one batched probe |
 | **Sensors** | Full sensor enumeration with ranges, rates, FIFO depth; best-effort live values | `dumpsys sensorservice` |
 | **Logcat** | Device log scoped to the selected process, with host-side level/tag/text filtering | `adb logcat -v threadtime` |
@@ -209,6 +210,57 @@ Two limits come from Android rather than emeron:
 Package and permission names are checked against `[A-Za-z0-9._]` before they
 are put into a shell command. Clear data and Uninstall ask first, and Uninstall
 is offered only for apps you installed.
+
+## Screen
+
+Two capture engines, picked in the panel:
+
+**Fast (scrcpy)** -- the default when the build has FFmpeg. emeron pushes
+scrcpy's own server (`vendor/scrcpy`, v3.3.4, embedded in the binary) to
+`/data/local/tmp`, starts it with `app_process`, and connects to it through an
+`adb forward` tunnel. The server feeds the phone's hardware video encoder and
+streams H.264; emeron decodes it with FFmpeg and draws it. Input goes back on a
+control socket as real touch events -- down, move, up -- so a drag, a long
+press or a fling behaves exactly as on the phone, and the wheel is a real
+scroll. Measured on a phone over USB 2: **57 fps** at 704x1600, about 13 KB per
+frame, against 7 fps for the compatible engine on the same phone. Frames are
+only sent when the screen changes, so a still screen shows a low frame rate.
+
+This is the one place emeron runs code on the device, and only for the
+session: the server deletes its own jar as it starts, the tunnel is removed on
+stop, and the server exits when its sockets close. If it cannot start -- an
+unusual ROM, a missing encoder -- the panel says why (the server's own error)
+and falls back to the compatible engine by itself.
+
+**Compatible (screencap)** -- needs nothing but adb, and is what a build
+without FFmpeg uses. Raw `screencap` frames, piped through `gzip -1` on the
+phone, from a few persistent device-side loops read continuously.
+`screencap` itself costs ~170 ms per frame on a mid-range phone, but runs in
+parallel, so several loops help with diminishing returns: 1 stream ~3 fps,
+3 ~7-12, 6 ~8-16. The **Streams** slider sets this, because each stream costs
+the phone CPU that skews what is being profiled; default 3. Input is
+`input tap|swipe|keyevent|text`, so a gesture is decided at release
+(`classifyGesture()`) and played as one swipe. `input text` is ASCII only.
+
+Either way, capture runs only while the Screen tab is visible; apps that block
+screenshots (FLAG_SECURE: banking, DRM video) show black.
+
+FFmpeg is optional and found through pkg-config (`brew install ffmpeg`;
+`apt install libavcodec-dev libswscale-dev`); `-DEMERON_USE_FFMPEG=OFF` turns
+it off. Inflate and the compressed PNG screenshots use **miniz** (`vendor/miniz`).
+
+## Notifications
+
+Toasts in the bottom-right corner (**ImGuiNotify**, `vendor/ImGuiNotify`) for
+what is worth knowing while looking at something else: a phone connected,
+disconnected, or waiting for the USB-debugging prompt; a file transfer or
+download finished or failed (with *Show in Finder*); an action in Apps
+succeeded or failed; an APK or screenshot saved; a Perfetto capture finished
+(with *Open in Explore*); the Screen panel falling back to its compatible
+engine; and, once per report, that emeron crashed last time (with *Open Crash
+Logs*). Errors stay 10 s, the rest 4 s. Turn them off under **View >
+Notifications** (saved in `emeron.ini`). `notify::post()` is safe from any
+thread.
 
 ## Crash logs
 

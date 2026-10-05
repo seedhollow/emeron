@@ -62,6 +62,62 @@ nativefiledialog-extended
               nfd_glfw3.h -- upstream's src/CMakeLists.txt lists the SDL
               helpers as sources and fails to configure without them.
 
+miniz
+  repository  https://github.com/richgel999/miniz.git
+  tag         3.1.2
+  file        release asset miniz-3.1.2.zip (amalgamated miniz.c + miniz.h)
+              sha256 f0446d863f9c19926ad9483c523fdc42e42b8d4a6a431d27e09d49c79a140d9a
+  license     MIT (vendor/miniz/LICENSE)
+  note        Inflate for the screen mirror, which compresses frames with
+              gzip on the device (10.6 MB raw -> 1.7 MB). Always vendored, see
+              cmake/Dependencies.cmake. Built with MINIZ_NO_ARCHIVE_APIS,
+              _NO_STDIO, _NO_TIME and _NO_ZLIB_COMPATIBLE_NAMES.
+  pruned      examples/, ChangeLog.md, readme.md.
+
+scrcpy server
+  repository  https://github.com/Genymobile/scrcpy.git
+  tag         v3.3.4
+  file        release asset scrcpy-server-v3.3.4, unmodified
+              sha256 8588238c9a5a00aa542906b6ec7e6d5541d9ffb9b5d0f6e1bc0e365e2303079e
+              (matches the digest GitHub publishes for the asset)
+  license     Apache-2.0 (vendor/scrcpy/LICENSE)
+  note        The Screen panel's Fast engine pushes it to the device, runs it
+              for the session, and talks to it over an adb tunnel. It deletes
+              itself on start. Embedded into the binary by CMakeLists.txt.
+              The client/server protocol is internal to scrcpy and changes
+              between releases, and the server refuses another version: on an
+              update, bump EMERON_SCRCPY_VERSION and re-check every layout in
+              src/collect/ScrcpyProtocol.cpp against app/src/control_msg.c and
+              the server's Streamer/DesktopConnection at the new tag --
+              tests/test_scrcpy_protocol.cpp copies scrcpy's own serializer
+              test vectors, so update those too.
+  pruned      everything but the server asset and LICENSE.
+
+ImGuiNotify
+  repository  https://github.com/TyomaVader/ImGuiNotify.git
+  commit      d00e45f8d6b1e094bc9288d20eb3d2840f6a7d73
+  file        unixExample/backends/ImGuiNotify.hpp (header-only)
+              upstream sha256 e50cde11f092fae2a54ea529faac292cc556fcf36158c78479d6d3c21c46cd4c
+              The win32Example copy differs in one line (wraps text at the
+              toast's own width, which is circular with AlwaysAutoResize);
+              the unix one wraps at a third of the window.
+  license     MIT (vendor/ImGuiNotify/LICENSE)
+  note        Toasts, through src/ui/Notifications.cpp (thread-safe queue,
+              theme colours, configuration).
+  patched     ImGuiNotify.hpp, spots marked "EMERON PATCH":
+              * the configuration macros are #ifndef-guarded, so the app
+                configures them instead of editing the header;
+              * the dismiss button erased the toast and then kept using the
+                pointer to it for the rest of the loop -- a use-after-free when
+                it was the last toast. It is now removed after End();
+              * an expired toast's removal no longer skips the next toast;
+              * colours: the built-in ones are 0-255 values in an ImVec4,
+                which ImGui clamps to 0-1 (blue showed cyan, warnings pure
+                yellow, unreadable on a light theme). ImGuiToast::colorOverride
+                lets emeron use its contrast-checked palette.
+              Re-apply on every update: grep -n "EMERON PATCH".
+  pruned      everything but ImGuiNotify.hpp and LICENSE.
+
 Font Awesome Free (Solid)
   repository  https://github.com/FortAwesome/Font-Awesome.git
   tag         6.7.2

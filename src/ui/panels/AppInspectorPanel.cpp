@@ -15,6 +15,7 @@
 #include "core/CrashHandler.h"
 #include "core/StringUtil.h"
 #include "core/TaskQueue.h"
+#include "ui/Notifications.h"
 #include "ui/Widgets.h"
 
 namespace em {
@@ -259,6 +260,15 @@ void AppInspectorPanel::runAction(AppContext& context, AppAction action, std::st
             if (generation != generation_) return;
             actionBusy_ = false;
             lastAction_ = std::move(result);
+            // Permission toggles are visible right where they were clicked;
+            // the rest (uninstall, clear data, launch...) get a toast too.
+            const bool permission = action == AppAction::GrantPermission ||
+                                    action == AppAction::RevokePermission;
+            if (!lastAction_.ok) {
+                notify::error(target, lastAction_.message);
+            } else if (!permission) {
+                notify::success(target, lastAction_.message);
+            }
             if (action == AppAction::Uninstall && lastAction_.ok) {
                 if (selected_ == target) {
                     selected_.clear();
@@ -289,6 +299,9 @@ void AppInspectorPanel::pullApks(AppContext& context) {
                               lastAction_ = std::move(result);
                               if (lastAction_.ok) {
                                   FileSystemBrowser::revealOnHost(context.pool, destination);
+                                  notify::success("APK saved", lastAction_.message);
+                              } else {
+                                  notify::error("Saving the APK failed", lastAction_.message);
                               }
                           });
 }

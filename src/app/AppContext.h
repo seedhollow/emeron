@@ -21,6 +21,7 @@ class DeviceInfoCollector;
 class SensorReader;
 class FileSystemBrowser;
 class AppInspector;
+class ScreenMirror;
 class PerfettoCapture;
 class TraceProcessor;
 class ThreadPool;
@@ -36,6 +37,7 @@ struct AppContext {
     SensorReader& sensors;
     FileSystemBrowser& files;
     AppInspector& apps;
+    ScreenMirror& mirror;
     PerfettoCapture& perfetto;
     TraceProcessor& traceProcessor;
 

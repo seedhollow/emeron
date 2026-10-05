@@ -18,6 +18,7 @@ namespace em {
 [[nodiscard]] std::vector<std::uint8_t> encodePng(std::span<const std::uint8_t> rgba,
                                                   std::uint32_t width, std::uint32_t height);
 
+// Writes a deflate-compressed PNG (via miniz), falling back to encodePng().
 [[nodiscard]] Status writePng(const std::filesystem::path& file,
                               std::span<const std::uint8_t> rgba, std::uint32_t width,
                               std::uint32_t height);

@@ -43,6 +43,7 @@ private:
     std::string sql_;
     QueryResult result_;
     std::string queryError_;
+    CaptureStatus::Phase lastPhase_ = CaptureStatus::Phase::Idle;  // for the finished/failed toast
     bool queryRunning_ = false;
     bool traceListLoaded_ = false;
     int selectedStandardQuery_ = -1;

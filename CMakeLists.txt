@@ -37,8 +37,10 @@ add_library(emeron_core STATIC
     src/core/Subprocess.cpp
     src/core/CrashHandler.cpp
     src/core/Hash.cpp
+    src/core/Gzip.cpp
     src/core/TaskQueue.cpp
     src/core/HttpClient.cpp
+    src/core/TcpSocket.cpp
     src/core/IniFile.cpp
     src/core/PngWriter.cpp
 
@@ -56,10 +58,22 @@ add_library(emeron_core STATIC
     src/collect/PerfettoCapture.cpp
     src/collect/AppInspector.cpp
     src/collect/ApkAnalysis.cpp
+    src/collect/ScreenMirror.cpp
+    src/collect/ScrcpyProtocol.cpp
 )
 
 target_include_directories(emeron_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
-target_link_libraries(emeron_core PUBLIC Threads::Threads)
+target_link_libraries(emeron_core PUBLIC Threads::Threads PRIVATE miniz)
+
+# H.264 decoding for the fast screen mirror. Optional: without FFmpeg the
+# mirror falls back to `screencap`, and everything else is unaffected.
+if(EMERON_FFMPEG_FOUND)
+    target_sources(emeron_core PRIVATE src/collect/VideoDecoderFfmpeg.cpp)
+    target_link_libraries(emeron_core PRIVATE PkgConfig::EMERON_FFMPEG)
+    target_compile_definitions(emeron_core PUBLIC EMERON_HAS_FFMPEG=1)
+else()
+    target_sources(emeron_core PRIVATE src/collect/VideoDecoderNone.cpp)
+endif()
 emeron_set_warnings(emeron_core)
 emeron_set_sanitizers(emeron_core)
 
@@ -86,7 +100,22 @@ add_custom_command(
     COMMENT "Embedding Font Awesome Solid"
     VERBATIM)
 
-add_library(emeron_assets STATIC "${EMERON_FA_CPP}")
+# The scrcpy server (vendor/scrcpy, Apache-2.0), pushed to the device by the
+# fast screen mirror. Embedded for the same reason as the font: one binary,
+# nothing to find at run time.
+set(EMERON_SCRCPY_VERSION "3.3.4")
+set(EMERON_SCRCPY_JAR "${CMAKE_CURRENT_SOURCE_DIR}/vendor/scrcpy/scrcpy-server-v${EMERON_SCRCPY_VERSION}")
+set(EMERON_SCRCPY_CPP "${CMAKE_CURRENT_BINARY_DIR}/generated/scrcpy_server.cpp")
+add_custom_command(
+    OUTPUT  "${EMERON_SCRCPY_CPP}"
+    COMMAND "${CMAKE_COMMAND}" -DINPUT=${EMERON_SCRCPY_JAR} -DOUTPUT=${EMERON_SCRCPY_CPP}
+            -DSYMBOL=kScrcpyServer -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedFile.cmake"
+    DEPENDS "${EMERON_SCRCPY_JAR}" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedFile.cmake"
+    COMMENT "Embedding the scrcpy server"
+    VERBATIM)
+
+add_library(emeron_assets STATIC "${EMERON_FA_CPP}" "${EMERON_SCRCPY_CPP}")
+target_compile_definitions(emeron_assets PUBLIC EMERON_SCRCPY_VERSION="${EMERON_SCRCPY_VERSION}")
 target_include_directories(emeron_assets SYSTEM PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/vendor/IconFontCppHeaders")
 target_compile_features(emeron_assets PUBLIC cxx_std_20)
@@ -102,6 +131,7 @@ add_executable(emeron
     src/app/Fonts.cpp
     src/app/Screenshot.cpp
     src/ui/PanelRegistry.cpp
+    src/ui/Notifications.cpp
     src/ui/panels/DeviceToolbar.cpp
     src/ui/panels/DashboardPanel.cpp
     src/ui/panels/FrameTimePanel.cpp
@@ -113,10 +143,13 @@ add_executable(emeron
     src/ui/panels/LogcatPanel.cpp
     src/ui/panels/CrashLogPanel.cpp
     src/ui/panels/AppInspectorPanel.cpp
+    src/ui/panels/ScreenMirrorPanel.cpp
 )
 
 # implot links imgui publicly, so naming both would pass libimgui.a twice.
 target_link_libraries(emeron PRIVATE emeron_core emeron_assets implot::implot)
+# ImGuiNotify (vendor/ImGuiNotify): header-only toasts, used by src/ui/Notifications.cpp.
+target_include_directories(emeron SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/vendor/ImGuiNotify")
 
 if(EMERON_NFD_AVAILABLE)
     target_link_libraries(emeron PRIVATE nfd)
@@ -150,5 +183,6 @@ message(STATUS "  imgui      : ${EMERON_IMGUI_ORIGIN}")
 message(STATUS "  implot     : ${EMERON_IMPLOT_ORIGIN}")
 message(STATUS "  glfw       : ${EMERON_GLFW_ORIGIN}")
 message(STATUS "  dialogs    : ${EMERON_NFD_ORIGIN}")
+message(STATUS "  ffmpeg     : ${EMERON_FFMPEG_ORIGIN}")
 message(STATUS "  asan/ubsan : ${EMERON_ASAN}")
 message(STATUS "")

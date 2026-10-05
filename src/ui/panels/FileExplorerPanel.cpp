@@ -1,6 +1,7 @@
 #include "ui/panels/FileExplorerPanel.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cstdlib>
 #include <utility>
 
@@ -15,6 +16,7 @@
 #include "core/StringUtil.h"
 #include "core/TaskQueue.h"
 #include "ui/FileIcons.h"
+#include "ui/Notifications.h"
 #include "ui/Widgets.h"
 
 namespace em {
@@ -289,8 +291,30 @@ FileSystemBrowser::Callback FileExplorerPanel::reloadAfter(AppContext& context) 
 }
 
 void FileExplorerPanel::onOperationDone(AppContext& context, TransferStatus status) {
-    lastStatus_ = std::move(status);
+    setStatus(context, std::move(status));
     reload(context);
+}
+
+void FileExplorerPanel::setStatus(AppContext& context, TransferStatus status) {
+    lastStatus_ = std::move(status);
+    if (lastStatus_.state != TransferStatus::State::Done &&
+        lastStatus_.state != TransferStatus::State::Failed) {
+        return;
+    }
+    // Transfers can take a while: the toast is what tells someone who has
+    // moved on to another panel that it finished.
+    std::string title = lastStatus_.description.empty() ? std::string{"Files"} : lastStatus_.description;
+    if (!title.empty()) title[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(title[0])));
+    if (lastStatus_.state == TransferStatus::State::Failed) {
+        notify::error(title + " failed", lastStatus_.message);
+    } else if (!lastStatus_.localPath.empty()) {
+        const auto path = lastStatus_.localPath;
+        notify::postWithAction(notify::Kind::Success, title + " finished", lastStatus_.message,
+                               std::string{ICON_FA_FOLDER_OPEN "  "} + revealLabel(),
+                               [&context, path] { FileSystemBrowser::revealOnHost(context.pool, path); });
+    } else {
+        notify::success(title + " finished", lastStatus_.message);
+    }
 }
 
 void FileExplorerPanel::copySelection(bool cut) {
@@ -357,7 +381,7 @@ void FileExplorerPanel::downloadInto(AppContext& context, std::vector<FileRef> r
                                      const std::filesystem::path& folder) {
     context.prefs.set(kDownloadDirKey, toUtf8(folder));
     context.files.pull(context.pool, context.dispatcher, std::move(refs), folder,
-                       [this](TransferStatus status) { lastStatus_ = std::move(status); });
+                       [this, &context](TransferStatus status) { setStatus(context, std::move(status)); });
 }
 
 void FileExplorerPanel::chooseAndDownload(AppContext& context, std::vector<FileRef> refs) {
@@ -374,7 +398,7 @@ void FileExplorerPanel::chooseAndDownload(AppContext& context, std::vector<FileR
             context.prefs.set(kDownloadDirKey, toUtf8(choice.path.parent_path()));
             context.files.pullAs(
                 context.pool, context.dispatcher, refs.front(), choice.path,
-                [this](TransferStatus status) { lastStatus_ = std::move(status); });
+                [this, &context](TransferStatus status) { setStatus(context, std::move(status)); });
         }
     } else {
         // A folder or several items: choose where they go; names are kept and
@@ -402,7 +426,7 @@ void FileExplorerPanel::downloadToWorkspace(AppContext& context) {
     if (refs.empty()) return;
     context.files.pull(context.pool, context.dispatcher, std::move(refs),
                        context.workspaceDir / "pulled",
-                       [this](TransferStatus status) { lastStatus_ = std::move(status); });
+                       [this, &context](TransferStatus status) { setStatus(context, std::move(status)); });
 }
 
 void FileExplorerPanel::requestDelete() {

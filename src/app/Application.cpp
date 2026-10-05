@@ -4,6 +4,7 @@
 #include <chrono>
 #include <csignal>
 #include <cstdlib>
+#include <map>
 #include <mutex>
 #include <string>
 #include <utility>
@@ -31,6 +32,7 @@
 #include "app/Theme.h"
 #include "collect/DeviceInfo.h"
 #include "collect/AppInspector.h"
+#include "collect/ScreenMirror.h"
 #include "collect/FileSystemBrowser.h"
 #include "collect/FrameStats.h"
 #include "collect/LogcatReader.h"
@@ -45,6 +47,7 @@
 #include "core/Subprocess.h"
 #include "core/TaskQueue.h"
 #include "ui/Panel.h"
+#include "ui/Notifications.h"
 #include "ui/PanelRegistry.h"
 #include "ui/panels/DashboardPanel.h"
 #include "ui/panels/DeviceInfoPanel.h"
@@ -55,11 +58,17 @@
 #include "ui/panels/LogcatPanel.h"
 #include "ui/panels/CrashLogPanel.h"
 #include "ui/panels/AppInspectorPanel.h"
+#include "ui/panels/ScreenMirrorPanel.h"
 #include "ui/panels/PerfettoPanel.h"
 #include "ui/panels/SensorPanel.h"
 #include "ui/Widgets.h"
 
 namespace em {
+namespace embedded {
+// vendor/scrcpy's server, embedded by CMakeLists.txt (cmake/EmbedFile.cmake).
+extern const unsigned char kScrcpyServer[];
+extern const std::size_t kScrcpyServerSize;
+}  // namespace embedded
 namespace {
 
 constexpr const char* kCategory = "app";
@@ -174,6 +183,7 @@ struct Application::Impl {
     std::unique_ptr<SensorReader> sensors;
     std::unique_ptr<FileSystemBrowser> files;
     std::unique_ptr<AppInspector> apps;
+    std::unique_ptr<ScreenMirror> mirror;
     std::unique_ptr<PerfettoCapture> perfetto;
     std::unique_ptr<TraceProcessor> traceProcessor;
     std::unique_ptr<ThreadPool> pool;
@@ -186,6 +196,13 @@ struct Application::Impl {
     theme::Mode themeMode = theme::Mode::Dark;
 
     std::string previousSerial;
+    // Devices as last announced, serial -> state, for the connect/disconnect
+    // toasts. The first list after start-up is recorded silently.
+    std::map<std::string, DeviceState> announcedDevices;
+    std::uint64_t announcedRevision = 0;
+    bool devicesSeeded = false;
+    void announceDeviceChanges();
+    void announceNewCrashReport();
     bool layoutBuilt = false;
     int frontTabsCountdown = 0;
     // True only for a freshly built layout, whose own tab choice gets
@@ -244,6 +261,7 @@ Status Application::initialize() {
     impl_->initImGui();
     impl_->initServices();
     impl_->registerPanels();
+    impl_->announceNewCrashReport();
     return {};
 }
 
@@ -260,6 +278,7 @@ void Application::Impl::loadPreferences() {
     // An unrecognised or absent value falls back to dark rather than failing.
     const std::string stored = prefs.getOr("theme", "");
     themeMode = theme::parseMode(stored).value_or(theme::Mode::Dark);
+    notify::setEnabled(prefs.getOr("notifications", "on") != "off");
 
     // Write the file back when it was missing or held something we did not
     // recognise. That makes the preferences discoverable and hand-editable on
@@ -271,9 +290,78 @@ void Application::Impl::loadPreferences() {
 
 void Application::Impl::savePreferences() {
     prefs.set("theme", theme::toString(themeMode));
+    prefs.set("notifications", notify::enabled() ? "on" : "off");
     if (auto saved = prefs.save(prefsPath); !saved) {
         EM_LOG_WARN(kCategory, "could not write preferences: " + saved.describe());
     }
+}
+
+namespace {
+std::string deviceLabel(const DeviceRef& d) {
+    std::string name = d.model.empty() ? d.serial : d.model;
+    std::replace(name.begin(), name.end(), '_', ' ');  // adb reports "TECNO_LH8n"
+    return name;
+}
+}  // namespace
+
+void Application::Impl::announceDeviceChanges() {
+    if (devices->devicesRevision() == announcedRevision) return;
+    announcedRevision = devices->devicesRevision();
+    const DeviceList list = devices->devices();
+    // No adb server answer is not "every phone was unplugged".
+    if (!list.serverReachable) return;
+
+    std::map<std::string, DeviceState> now;
+    for (const auto& d : list.devices) now[d.serial] = d.state;
+    if (!devicesSeeded) {
+        devicesSeeded = true;
+        announcedDevices = std::move(now);
+        return;
+    }
+    for (const auto& d : list.devices) {
+        const auto before = announcedDevices.find(d.serial);
+        const bool isNew = before == announcedDevices.end();
+        if (!isNew && before->second == d.state) continue;
+        switch (d.state) {
+            case DeviceState::Online:
+                notify::success(ICON_FA_MOBILE_SCREEN "  " + deviceLabel(d) + " connected", d.serial);
+                break;
+            case DeviceState::Unauthorized:
+                notify::warning(deviceLabel(d) + " is waiting for permission",
+                                "Unlock the phone and tap Allow on the USB debugging prompt.");
+                break;
+            case DeviceState::NoPermissions:
+                notify::error(deviceLabel(d) + ": no permission",
+                              "Linux needs a udev rule for this device before adb can use it.");
+                break;
+            case DeviceState::Offline:
+                if (!isNew) notify::warning(deviceLabel(d) + " went offline", d.serial);
+                break;
+            default:
+                break;
+        }
+    }
+    for (const auto& [serial, state] : announcedDevices) {
+        if (!now.contains(serial)) notify::info(ICON_FA_PLUG "  Device disconnected", serial);
+    }
+    announcedDevices = std::move(now);
+}
+
+void Application::Impl::announceNewCrashReport() {
+    const auto reports = crash::listReports();
+    if (reports.empty()) return;
+    // Once per report: the newest one already announced is remembered.
+    const std::string newest = reports.front().fileName;
+    if (prefs.getOr("crash_seen", "") == newest) return;
+    prefs.set("crash_seen", newest);
+    savePreferences();
+    notify::postWithAction(notify::Kind::Warning, "emeron crashed last time",
+                           "A report was saved: " + newest, ICON_FA_BOMB "  Open Crash Logs", [this] {
+                               if (Panel* panel = panels->find(CrashLogPanel::kId)) {
+                                   panel->setVisible(true);
+                                   ImGui::SetWindowFocus(Panel::windowKey(CrashLogPanel::kId).c_str());
+                               }
+                           });
 }
 
 void Application::Impl::setTheme(theme::Mode next) {
@@ -377,6 +465,10 @@ void Application::Impl::initServices() {
     sensors = std::make_unique<SensorReader>(*devices);
     files = std::make_unique<FileSystemBrowser>(*devices);
     apps = std::make_unique<AppInspector>(*devices);
+    mirror = std::make_unique<ScreenMirror>(*devices);
+    mirror->setScrcpyServer(std::string{reinterpret_cast<const char*>(embedded::kScrcpyServer),
+                                        embedded::kScrcpyServerSize},
+                            EMERON_SCRCPY_VERSION);
     perfetto = std::make_unique<PerfettoCapture>(*devices);
     traceProcessor = std::make_unique<TraceProcessor>(config.traceProcessorPath);
 
@@ -405,6 +497,7 @@ void Application::Impl::registerPanels() {
     panels->add<FrameTimePanel>();
     panels->add<FileExplorerPanel>();
     panels->add<AppInspectorPanel>();
+    panels->add<ScreenMirrorPanel>();
     panels->add<DeviceInfoPanel>();
     panels->add<SensorPanel>();
     panels->add<PerfettoPanel>();
@@ -435,6 +528,7 @@ void Application::Impl::buildDefaultLayout(ImGuiID dockspaceId) {
     ImGui::DockBuilderDockWindow(Panel::windowKey(FileExplorerPanel::kId).c_str(), left);
     ImGui::DockBuilderDockWindow(Panel::windowKey(DeviceInfoPanel::kId).c_str(), right);
     ImGui::DockBuilderDockWindow(Panel::windowKey(SensorPanel::kId).c_str(), right);
+    ImGui::DockBuilderDockWindow(Panel::windowKey(ScreenMirrorPanel::kId).c_str(), right);
     ImGui::DockBuilderDockWindow(Panel::windowKey(LogcatPanel::kId).c_str(), bottom);
     ImGui::DockBuilderDockWindow(Panel::windowKey(LogPanel::kId).c_str(), bottom);
     ImGui::DockBuilderDockWindow(Panel::windowKey(CrashLogPanel::kId).c_str(), bottom);
@@ -503,6 +597,14 @@ void Application::Impl::drawMenuBar(AppContext& context) {
         if (ImGui::MenuItem(ICON_FA_CIRCLE_HALF_STROKE "  Toggle light/dark", "Ctrl+T")) {
             setTheme(theme::other(themeMode));
         }
+
+        if (bool on = notify::enabled();
+            ImGui::MenuItem(ICON_FA_BELL "  Notifications", nullptr, &on)) {
+            notify::setEnabled(on);
+            savePreferences();
+        }
+        ImGui::SetItemTooltip("Pop-up messages in the corner: transfers finished, a phone "
+                              "connected, an action failed.");
 
         ImGui::Separator();
         if (ImGui::MenuItem(ICON_FA_TABLE_COLUMNS "  Reset layout")) layoutBuilt = false;
@@ -676,6 +778,7 @@ void Application::Impl::drawFrame(AppContext& context) {
     }
 
     panels->drawAll(context);
+    notify::render();
 
     if (showImGuiDemo) ImGui::ShowDemoWindow(&showImGuiDemo);
     if (showImPlotDemo) ImPlot::ShowDemoWindow(&showImPlotDemo);
@@ -689,6 +792,7 @@ void Application::Impl::shutdown(AppContext& context) {
     // client, and the pool's tasks capture the collectors.
     perfetto->cancel();
     sensors->stopPolling();
+    mirror->stop();
     logcat->stop();
     frames->stop();
     metrics->stop();
@@ -723,6 +827,7 @@ int Application::run() {
         .sensors = *impl.sensors,
         .files = *impl.files,
         .apps = *impl.apps,
+        .mirror = *impl.mirror,
         .perfetto = *impl.perfetto,
         .traceProcessor = *impl.traceProcessor,
         .pool = *impl.pool,
@@ -749,6 +854,7 @@ int Application::run() {
         // Results from worker threads land here, on the UI thread, before any
         // panel reads the state they mutate.
         impl.dispatcher->drain();
+        impl.announceDeviceChanges();
 
         const std::string serial = impl.devices->selectedSerial();
         context.deviceChangedThisFrame = serial != impl.previousSerial;

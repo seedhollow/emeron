@@ -15,6 +15,8 @@ add_executable(emeron_tests
     test_app_inspector.cpp
     test_apk_analysis.cpp
     test_table_settings.cpp
+    test_screen_mirror.cpp
+    test_scrcpy_protocol.cpp
 
     # Theme lives in the GUI target, but its palettes are pure data and the
     # contrast of a hand-written light theme is exactly the thing worth

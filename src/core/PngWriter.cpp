@@ -4,6 +4,8 @@
 #include <array>
 #include <fstream>
 
+#include <miniz.h>
+
 namespace em {
 namespace {
 
@@ -99,7 +101,19 @@ Status writePng(const std::filesystem::path& file, std::span<const std::uint8_t>
     if (rgba.size() < static_cast<std::size_t>(width) * height * 4) {
         return makeError(ErrorKind::Unsupported, "pixel buffer is smaller than the image");
     }
-    const auto png = encodePng(rgba, width, height);
+    // Compressed with miniz's PNG writer: a phone screenshot is ~10 MB with
+    // the stored-block encoder above and a few hundred KB this way. That
+    // encoder stays as the fallback (and the one the tests pin down).
+    std::vector<std::uint8_t> png;
+    std::size_t length = 0;
+    if (void* compressed = tdefl_write_image_to_png_file_in_memory_ex(
+            rgba.data(), static_cast<int>(width), static_cast<int>(height), 4, &length, 6, MZ_FALSE)) {
+        const auto* bytes = static_cast<const std::uint8_t*>(compressed);
+        png.assign(bytes, bytes + length);
+        mz_free(compressed);
+    } else {
+        png = encodePng(rgba, width, height);
+    }
 
     std::error_code ec;
     if (file.has_parent_path()) std::filesystem::create_directories(file.parent_path(), ec);
