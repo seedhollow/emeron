@@ -12,6 +12,7 @@ Five tools in one dockable window:
 | **Device Files** | File manager: multi-select, cut/copy/paste, duplicate, rename, new folder, delete, upload, download, drag-and-drop | `ls -lA`, `cp`/`mv`/`rm`/`mkdir`, `adb pull`, `adb push` |
 | **Apps** | Every installed app; pick one to see version, SDK levels, installer, signing, permissions (grant/revoke runtime ones), components, APK files, storage, memory, compilation state and the raw dump. Open, force stop, save APK, clear data, uninstall | `pm list packages`, `dumpsys package`, `pm path`, `cmd appops`, `dumpsys meminfo`, `dumpsys diskstats` |
 | **Screen** | The device's screen, live. Click to tap, hold to long-press, drag to swipe, wheel to scroll; Back/Home/Recents/Power/Volume; type into the phone; save screenshots | scrcpy server + FFmpeg (fast), or `screencap \| gzip -1` + `input` (compatible) |
+| **Layout** | The View hierarchy of any app on screen, release builds included: component tree with search, screenshot with every view outlined (2D or exploded 3D), Alt-redlines in px/dp, properties, Copy as Espresso/UiAutomator/adb tap, tap on device, and an audit of touch targets, labels and layout cost. Inspect mode in Screen picks views on the live screen | `dumpsys activity top`, `dumpsys window`, `uiautomator dump`, `screencap` — one round trip |
 | **Device Info** | Build, SoC, display, storage, network, tracing posture, and the full raw `getprop` | `getprop` + one batched probe |
 | **Sensors** | Full sensor enumeration with ranges, rates, FIFO depth; best-effort live values | `dumpsys sensorservice` |
 | **Logcat** | Device log scoped to the selected process, with host-side level/tag/text filtering | `adb logcat -v threadtime` |
@@ -248,6 +249,47 @@ screenshots (FLAG_SECURE: banking, DRM video) show black.
 FFmpeg is optional and found through pkg-config (`brew install ffmpeg`;
 `apt install libavcodec-dev libswscale-dev`); `-DEMERON_USE_FFMPEG=OFF` turns
 it off. Inflate and the compressed PNG screenshots use **miniz** (`vendor/miniz`).
+
+## Layout
+
+A layout inspector that needs no Android Studio, no project and no debuggable
+build: it reads whatever is on the phone's screen.
+
+* **Capture** (F5) reads the View tree of every visible activity (`dumpsys
+  activity top`) and the accessibility tree (`uiautomator dump`) in one adb
+  round trip, then merges them. The View tree is the skeleton, complete with
+  GONE views and exact bounds. The accessibility tree adds text, content
+  descriptions, and the Compose and WebView nodes that the View tree only
+  sees as one opaque view. Scrolled lists are moved to where they really
+  are. The **Source** menu picks *Views only*, which is fast (well under a
+  second), or *Accessibility only*, which also covers dialogs and other
+  apps' windows.
+* **Live** captures again a second after each capture lands, and keeps the
+  selection.
+* **Tree**: filter by class, id or text (Ctrl/Cmd+F), arrow keys to walk it,
+  right-click to copy selectors or tap the view. Nodes marked with the
+  accessibility icon exist only in the accessibility tree.
+* **Canvas**: hover to highlight, click to select, scroll to zoom,
+  right-drag to pan, double-click to reset. Hold **Alt** to measure from
+  the selection to the view under the pointer, in px and dp. The 3D button
+  explodes the hierarchy into layers you can drag to rotate.
+* **Properties**: size and position in px and dp, flags, text, scroll
+  shift. Click a value to copy it. **Copy as** gives an Espresso matcher, a
+  UiAutomator selector or an `adb shell input tap`. **Tap** taps the view on
+  the phone.
+* **Audit**: touch targets under 48 dp, clickable views with nothing for a
+  screen reader to say, wrapper layouts that add nothing, large GONE
+  subtrees, and very deep hierarchies.
+* **Export** saves the screenshot, the tree as JSON and the raw dumps to
+  `<workspace>/layouts/<serial>-<time>/`.
+* **Inspect** (the crosshair in the Screen panel) turns the live screen into
+  a picker: point to see a view's name and size, click to select it in the
+  Layout panel. Views hovered in the Layout panel are outlined on the live
+  screen too.
+
+`uiautomator` fails while the screen is animating, and while another
+automation tool (an Appium or Espresso run) holds the accessibility
+service. The capture then says so, and the views are shown without text.
 
 ## Notifications
 

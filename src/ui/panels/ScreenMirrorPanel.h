@@ -61,6 +61,7 @@ private:
     double lastWheelSend_ = 0.0;
 
     bool typeIntoDevice_ = false;
+    bool pickHovering_ = false;  // Inspect mode: the pointer was over the screen
     std::string pendingTyping_;
     double lastTypedTime_ = 0.0;
     std::string textField_;

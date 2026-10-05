@@ -17,12 +17,15 @@ add_executable(emeron_tests
     test_table_settings.cpp
     test_screen_mirror.cpp
     test_scrcpy_protocol.cpp
+    test_layout_inspector.cpp
+    test_input_script.cpp
 
     # Theme lives in the GUI target, but its palettes are pure data and the
     # contrast of a hand-written light theme is exactly the thing worth
     # asserting. ImGui and ImPlot contexts work headlessly, so no window is
     # needed to test it.
     ${CMAKE_SOURCE_DIR}/src/app/Theme.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/InputScript.cpp
 )
 
 target_link_libraries(emeron_tests PRIVATE emeron_core emeron_assets implot::implot)

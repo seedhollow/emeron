@@ -1,0 +1,23 @@
+package com.lunaris.interactive.chapter
+panel Sensors
+wait 1
+click 1399 97
+move 1500 600
+wait 6
+shot ../sensors.png
+panel Layout
+wait 2
+click 564 381
+wait 0.5
+click 157 68
+wait 0.5
+drag 840 694 840 985
+wait 6
+click 655 470
+click 528 97
+wait 1
+drag 640 620 820 580
+wait 1
+move 1100 900
+wait 0.5
+shot ../layout-3d.png

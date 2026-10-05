@@ -22,6 +22,7 @@ class SensorReader;
 class FileSystemBrowser;
 class AppInspector;
 class ScreenMirror;
+class LayoutInspector;
 class PerfettoCapture;
 class TraceProcessor;
 class ThreadPool;
@@ -38,6 +39,7 @@ struct AppContext {
     FileSystemBrowser& files;
     AppInspector& apps;
     ScreenMirror& mirror;
+    LayoutInspector& layout;
     PerfettoCapture& perfetto;
     TraceProcessor& traceProcessor;
 

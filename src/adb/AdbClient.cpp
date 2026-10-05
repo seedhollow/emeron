@@ -18,12 +18,12 @@ constexpr std::string_view kBatchSentinel = "@@EMERON_SEP_7f3a@@";
 }  // namespace
 
 DeviceState parseDeviceState(std::string_view token) noexcept {
-    if (token == "device")        return DeviceState::Online;
-    if (token == "offline")       return DeviceState::Offline;
-    if (token == "unauthorized")  return DeviceState::Unauthorized;
-    if (token == "bootloader")    return DeviceState::Bootloader;
-    if (token == "recovery")      return DeviceState::Recovery;
-    if (token == "sideload")      return DeviceState::Sideload;
+    if (token == "device") return DeviceState::Online;
+    if (token == "offline") return DeviceState::Offline;
+    if (token == "unauthorized") return DeviceState::Unauthorized;
+    if (token == "bootloader") return DeviceState::Bootloader;
+    if (token == "recovery") return DeviceState::Recovery;
+    if (token == "sideload") return DeviceState::Sideload;
     if (token == "no" || token == "no permissions") return DeviceState::NoPermissions;
     if (token == "connecting" || token == "authorizing") return DeviceState::Connecting;
     return DeviceState::Unknown;
@@ -31,15 +31,24 @@ DeviceState parseDeviceState(std::string_view token) noexcept {
 
 std::string_view toString(DeviceState state) noexcept {
     switch (state) {
-        case DeviceState::Online:        return "online";
-        case DeviceState::Offline:       return "offline";
-        case DeviceState::Unauthorized:  return "unauthorized";
-        case DeviceState::Bootloader:    return "bootloader";
-        case DeviceState::Recovery:      return "recovery";
-        case DeviceState::Sideload:      return "sideload";
-        case DeviceState::NoPermissions: return "no permissions";
-        case DeviceState::Connecting:    return "connecting";
-        case DeviceState::Unknown:       break;
+        case DeviceState::Online:
+            return "online";
+        case DeviceState::Offline:
+            return "offline";
+        case DeviceState::Unauthorized:
+            return "unauthorized";
+        case DeviceState::Bootloader:
+            return "bootloader";
+        case DeviceState::Recovery:
+            return "recovery";
+        case DeviceState::Sideload:
+            return "sideload";
+        case DeviceState::NoPermissions:
+            return "no permissions";
+        case DeviceState::Connecting:
+            return "connecting";
+        case DeviceState::Unknown:
+            break;
     }
     return "unknown";
 }
@@ -218,8 +227,8 @@ Result<std::string> AdbClient::shell(std::string_view serial, std::string_view c
         return makeError(ErrorKind::Timeout, "shell timed out: " + std::string{command});
     }
     if (!out.err.empty()) {
-        EM_LOG_DEBUG(kCategory, "stderr from '" + std::string{command} + "': " +
-                                    std::string{out.firstErrLine()});
+        EM_LOG_DEBUG(kCategory, "stderr from '" + std::string{command} +
+                                    "': " + std::string{out.firstErrLine()});
     }
     return std::move(out.out);
 }
@@ -304,9 +313,8 @@ std::optional<std::string> extractComponentPackage(std::string_view text) {
         std::size_t start = slash;
         while (start > 0) {
             const char c = line[start - 1];
-            const bool partOfName =
-                (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-                (c >= '0' && c <= '9') || c == '.' || c == '_';
+            const bool partOfName = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+                                    (c >= '0' && c <= '9') || c == '.' || c == '_';
             if (!partOfName) break;
             --start;
         }
@@ -329,9 +337,8 @@ Result<std::string> AdbClient::foregroundPackage(std::string_view serial) {
                  kAdbNormalTimeout));
     if (const auto pkg = extractComponentPackage(activityDump)) return *pkg;
 
-    EM_TRY(windowDump,
-           shell(serial, "dumpsys window | grep -E 'mCurrentFocus|mFocusedApp'",
-                 kAdbNormalTimeout));
+    EM_TRY(windowDump, shell(serial, "dumpsys window | grep -E 'mCurrentFocus|mFocusedApp'",
+                             kAdbNormalTimeout));
     if (const auto pkg = extractComponentPackage(windowDump)) return *pkg;
 
     return makeError(ErrorKind::NotFound, "could not determine foreground package");

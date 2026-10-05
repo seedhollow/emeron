@@ -60,6 +60,7 @@ add_library(emeron_core STATIC
     src/collect/ApkAnalysis.cpp
     src/collect/ScreenMirror.cpp
     src/collect/ScrcpyProtocol.cpp
+    src/collect/LayoutInspector.cpp
 )
 
 target_include_directories(emeron_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
@@ -130,6 +131,7 @@ add_executable(emeron
     src/app/NativeDialogs.cpp
     src/app/Fonts.cpp
     src/app/Screenshot.cpp
+    src/app/InputScript.cpp
     src/ui/PanelRegistry.cpp
     src/ui/Notifications.cpp
     src/ui/panels/DeviceToolbar.cpp
@@ -144,6 +146,7 @@ add_executable(emeron
     src/ui/panels/CrashLogPanel.cpp
     src/ui/panels/AppInspectorPanel.cpp
     src/ui/panels/ScreenMirrorPanel.cpp
+    src/ui/panels/LayoutInspectorPanel.cpp
 )
 
 # implot links imgui publicly, so naming both would pass libimgui.a twice.

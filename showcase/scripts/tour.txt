@@ -1,0 +1,26 @@
+package com.lunaris.interactive.chapter
+panel Dashboard
+wait 1
+click 193 97           # Device Files: go to /
+wait 45
+shot ../dashboard-frame-time.png
+panel Device Files
+wait 0.5
+shot ../device-files.png
+panel Apps
+wait 2
+click 588 128          # package filter
+type lunaris
+wait 1
+shot ../apps.png
+panel Device Info
+wait 2
+shot ../device-info.png
+panel Sensors
+wait 1
+click 1399 97          # Live values
+wait 6
+shot ../sensors.png
+panel Perfetto
+wait 1
+shot ../perfetto.png

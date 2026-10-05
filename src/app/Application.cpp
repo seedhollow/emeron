@@ -4,6 +4,8 @@
 #include <chrono>
 #include <csignal>
 #include <cstdlib>
+#include <fstream>
+#include <sstream>
 #include <map>
 #include <mutex>
 #include <string>
@@ -27,12 +29,14 @@
 #include "adb/DeviceManager.h"
 #include "app/AppContext.h"
 #include "app/Fonts.h"
+#include "app/InputScript.h"
 #include "app/Screenshot.h"
 #include "app/NativeDialogs.h"
 #include "app/Theme.h"
 #include "collect/DeviceInfo.h"
 #include "collect/AppInspector.h"
 #include "collect/ScreenMirror.h"
+#include "collect/LayoutInspector.h"
 #include "collect/FileSystemBrowser.h"
 #include "collect/FrameStats.h"
 #include "collect/LogcatReader.h"
@@ -59,6 +63,7 @@
 #include "ui/panels/CrashLogPanel.h"
 #include "ui/panels/AppInspectorPanel.h"
 #include "ui/panels/ScreenMirrorPanel.h"
+#include "ui/panels/LayoutInspectorPanel.h"
 #include "ui/panels/PerfettoPanel.h"
 #include "ui/panels/SensorPanel.h"
 #include "ui/Widgets.h"
@@ -184,6 +189,7 @@ struct Application::Impl {
     std::unique_ptr<FileSystemBrowser> files;
     std::unique_ptr<AppInspector> apps;
     std::unique_ptr<ScreenMirror> mirror;
+    std::unique_ptr<LayoutInspector> layout;
     std::unique_ptr<PerfettoCapture> perfetto;
     std::unique_ptr<TraceProcessor> traceProcessor;
     std::unique_ptr<ThreadPool> pool;
@@ -212,7 +218,17 @@ struct Application::Impl {
     bool showImPlotDemo = false;
     bool quitRequested = false;
 
+    // --script: the steps, where we are, and what the current step waits for.
+    std::vector<ScriptStep> script;
+    std::size_t scriptAt = 0;
+    double scriptResumeAt = 0.0;
+    ImVec2 scriptMouse{-FLT_MAX, -FLT_MAX};
+    std::optional<std::filesystem::path> scriptShot;  // taken after this frame renders
+    std::string scriptPanel;                          // brought to the front this frame
+
     [[nodiscard]] Status initWindow();
+    [[nodiscard]] Status loadScript();
+    void runScript();
     void loadPreferences();
     void savePreferences();
     void setTheme(theme::Mode next);
@@ -257,12 +273,61 @@ Status Application::initialize() {
     crash::install(impl_->config.workspaceDir);
 
     impl_->loadPreferences();
+    EM_TRY_VOID(impl_->loadScript());
     EM_TRY_VOID(impl_->initWindow());
     impl_->initImGui();
     impl_->initServices();
     impl_->registerPanels();
     impl_->announceNewCrashReport();
     return {};
+}
+
+Status Application::Impl::loadScript() {
+    if (!config.scriptPath) return {};
+    std::ifstream in{*config.scriptPath, std::ios::binary};
+    if (!in) return makeError(ErrorKind::Io, "cannot read script " + config.scriptPath->string());
+    std::ostringstream text;
+    text << in.rdbuf();
+    EM_TRY(steps, parseInputScript(text.str()));
+    script = std::move(steps);
+    // Shots land next to the script unless their path is absolute.
+    for (auto& step : script) {
+        if (step.kind == ScriptStep::Kind::Shot && std::filesystem::path{step.text}.is_relative()) {
+            step.text = (config.scriptPath->parent_path() / step.text).string();
+        }
+    }
+    return {};
+}
+
+// Feeds the script's input to ImGui. Called between the platform backend's
+// NewFrame and ImGui::NewFrame, so the script's pointer wins over the real one.
+void Application::Impl::runScript() {
+    if (script.empty() || scriptShot) return;
+    ImGuiIO& io = ImGui::GetIO();
+    if (scriptMouse.x != -FLT_MAX) io.AddMousePosEvent(scriptMouse.x, scriptMouse.y);
+    const double now = ImGui::GetTime();
+    if (now < scriptResumeAt) return;
+    while (scriptAt < script.size()) {
+        const ScriptStep& step = script[scriptAt++];
+        using Kind = ScriptStep::Kind;
+        switch (step.kind) {
+            case Kind::Wait: scriptResumeAt = now + step.seconds; return;
+            case Kind::Frame: return;
+            case Kind::MouseMove:
+                scriptMouse = {step.x, step.y};
+                io.AddMousePosEvent(step.x, step.y);
+                break;
+            case Kind::MouseButton: io.AddMouseButtonEvent(step.button, step.down); break;
+            case Kind::Wheel: io.AddMouseWheelEvent(0.0F, step.y); break;
+            case Kind::Key: io.AddKeyEvent(step.key, step.down); break;
+            case Kind::Text: io.AddInputCharactersUTF8(step.text.c_str()); break;
+            case Kind::Panel: scriptPanel = step.text; break;
+            case Kind::Package: devices->selectPackage(step.text); break;
+            case Kind::Shot: scriptShot = step.text; return;
+            case Kind::Quit: quitRequested = true; return;
+        }
+    }
+    quitRequested = true;
 }
 
 void Application::Impl::loadPreferences() {
@@ -469,6 +534,7 @@ void Application::Impl::initServices() {
     mirror->setScrcpyServer(std::string{reinterpret_cast<const char*>(embedded::kScrcpyServer),
                                         embedded::kScrcpyServerSize},
                             EMERON_SCRCPY_VERSION);
+    layout = std::make_unique<LayoutInspector>(*devices);
     perfetto = std::make_unique<PerfettoCapture>(*devices);
     traceProcessor = std::make_unique<TraceProcessor>(config.traceProcessorPath);
 
@@ -498,6 +564,7 @@ void Application::Impl::registerPanels() {
     panels->add<FileExplorerPanel>();
     panels->add<AppInspectorPanel>();
     panels->add<ScreenMirrorPanel>();
+    panels->add<LayoutInspectorPanel>();
     panels->add<DeviceInfoPanel>();
     panels->add<SensorPanel>();
     panels->add<PerfettoPanel>();
@@ -524,6 +591,7 @@ void Application::Impl::buildDefaultLayout(ImGuiID dockspaceId) {
     ImGui::DockBuilderDockWindow(Panel::windowKey(DashboardPanel::kId).c_str(), center);
     ImGui::DockBuilderDockWindow(Panel::windowKey(PerfettoPanel::kId).c_str(), center);
     ImGui::DockBuilderDockWindow(Panel::windowKey(AppInspectorPanel::kId).c_str(), center);
+    ImGui::DockBuilderDockWindow(Panel::windowKey(LayoutInspectorPanel::kId).c_str(), center);
     ImGui::DockBuilderDockWindow(Panel::windowKey(FrameTimePanel::kId).c_str(), centerLower);
     ImGui::DockBuilderDockWindow(Panel::windowKey(FileExplorerPanel::kId).c_str(), left);
     ImGui::DockBuilderDockWindow(Panel::windowKey(DeviceInfoPanel::kId).c_str(), right);
@@ -777,6 +845,11 @@ void Application::Impl::drawFrame(AppContext& context) {
         if (frontTabsCountdown == 0) selectDefaultTabs = false;
     }
 
+    if (!scriptPanel.empty() && selectDockTab(Panel::windowKey(scriptPanel).c_str())) {
+        ImGui::SetWindowFocus(Panel::windowKey(scriptPanel).c_str());
+        scriptPanel.clear();
+    }
+
     panels->drawAll(context);
     notify::render();
 
@@ -828,6 +901,7 @@ int Application::run() {
         .files = *impl.files,
         .apps = *impl.apps,
         .mirror = *impl.mirror,
+        .layout = *impl.layout,
         .perfetto = *impl.perfetto,
         .traceProcessor = *impl.traceProcessor,
         .pool = *impl.pool,
@@ -867,6 +941,7 @@ int Application::run() {
 
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
+        impl.runScript();
         ImGui::NewFrame();
 
         const ImGuiIO& io = ImGui::GetIO();
@@ -918,6 +993,16 @@ int Application::run() {
                 }
                 impl.quitRequested = true;
             }
+        }
+
+        if (impl.scriptShot) {
+            std::filesystem::create_directories(impl.scriptShot->parent_path());
+            if (auto saved = screenshot::captureBackBuffer(width, height, *impl.scriptShot); !saved) {
+                EM_LOG_ERROR(kCategory, "screenshot failed: " + saved.describe());
+            } else {
+                EM_LOG_INFO(kCategory, "screenshot saved to " + impl.scriptShot->string());
+            }
+            impl.scriptShot.reset();
         }
 
         if ((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) != 0) {

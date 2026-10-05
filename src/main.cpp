@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstdlib>
+#include <filesystem>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -27,6 +28,8 @@ void printUsage() {
         "  --no-vsync                 Do not cap the UI frame rate\n"
         "  --screenshot <file.png>    Save the main window to a PNG and quit\n"
         "  --screenshot-delay <sec>   Seconds to wait before the screenshot (default 4)\n"
+        "  --script <file>            Drive the UI from a script and save screenshots\n"
+        "                             (see src/app/InputScript.h)\n"
         "  --package <name>           Target this app from the start\n"
         "  --show-panel <name>        Bring a panel's tab to the front (repeatable),\n"
         "                             e.g. --show-panel Sensors\n"
@@ -119,6 +122,12 @@ int main(int argc, char** argv) {
         if (arg == "--show-panel") {
             if (const auto value = next(); !value.empty()) {
                 config.showPanels.emplace_back(value);
+            }
+            continue;
+        }
+        if (arg == "--script") {
+            if (const auto value = next(); !value.empty()) {
+                config.scriptPath = std::filesystem::path{std::string{value}};
             }
             continue;
         }

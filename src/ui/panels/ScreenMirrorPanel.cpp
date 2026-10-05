@@ -11,11 +11,13 @@
 #include "adb/DeviceManager.h"
 #include "app/Theme.h"
 #include "collect/FileSystemBrowser.h"
+#include "collect/LayoutInspector.h"
 #include "core/CrashHandler.h"
 #include "core/PngWriter.h"
 #include "core/StringUtil.h"
 #include "ui/Notifications.h"
 #include "ui/Widgets.h"
+#include "ui/panels/LayoutInspectorPanel.h"
 
 #ifndef GL_CLAMP_TO_EDGE
 #define GL_CLAMP_TO_EDGE 0x812F  // GL 1.2; Windows' gl.h stops at 1.1
@@ -98,16 +100,17 @@ void ScreenMirrorPanel::saveScreenshot(AppContext& context) {
     for (char& c : serial) {
         if (c == ':' || c == '/' || c == '\\') c = '_';  // network serials are host:port
     }
-    const auto file = context.workspaceDir / "screenshots" / (serial + "-" + timestamp() + ".png");
+    const auto file =
+        context.workspaceDir / "screenshots" / (serial + "-" + timestamp() + ".png");
     const auto status = writePng(file, shown_->rgba, shown_->width, shown_->height);
     statusOk_ = static_cast<bool>(status);
     if (status) {
         lastScreenshot_ = file;
         status_ = "saved " + file.filename().string();
-        notify::postWithAction(notify::Kind::Success, "Screenshot saved", file.filename().string(),
-                               ICON_FA_FOLDER_OPEN "  Show", [&context, file] {
-                                   FileSystemBrowser::revealOnHost(context.pool, file);
-                               });
+        notify::postWithAction(
+            notify::Kind::Success, "Screenshot saved", file.filename().string(),
+            ICON_FA_FOLDER_OPEN "  Show",
+            [&context, file] { FileSystemBrowser::revealOnHost(context.pool, file); });
     } else {
         status_ = status.error().message;
         notify::error("Screenshot failed", status_);
@@ -122,9 +125,10 @@ void ScreenMirrorPanel::drawToolbar(AppContext& context) {
         wantRunning_ = !wantRunning_;
         if (wantRunning_) crash::setBreadcrumb("Screen: mirroring " + context.selectedSerial);
     }
-    widgets::termTooltip(wantRunning_ ? "Pause" : "Show the screen  (screencap)",
-                         "Copies the phone's screen over adb a few times a second. It pauses by "
-                         "itself while this tab is hidden.");
+    widgets::termTooltip(
+        wantRunning_ ? "Pause" : "Show the screen  (screencap)",
+        "Copies the phone's screen over adb a few times a second. It pauses by "
+        "itself while this tab is hidden.");
 
     const auto key = [&mirror](const char* icon, const char* keycode, const char* label) {
         widgets::sameLineOrWrap(widgets::iconButtonWidth(icon));
@@ -150,11 +154,37 @@ void ScreenMirrorPanel::drawToolbar(AppContext& context) {
     widgets::termTooltip("Save screenshot",
                          "Save the frame on screen as a PNG in <workspace>/screenshots.");
 
+    LayoutInspector::Focus& focus = context.layout.focus();
+    widgets::sameLineOrWrap(widgets::iconButtonWidth(ICON_FA_CROSSHAIRS));
+    ImGui::BeginDisabled(!context.hasDevice());
+    if (widgets::toggleButton(
+            ICON_FA_CROSSHAIRS, &focus.pickOnScreen,
+            "Inspect: point at the screen to see its views, click to select one "
+            "in the Layout panel. Clicks do not reach the phone meanwhile.") &&
+        focus.pickOnScreen && !focus.snapshot) {
+        LayoutInspectorPanel::requestCapture(context, LayoutSource::Merged);
+    }
+    ImGui::EndDisabled();
+    if (focus.pickOnScreen) {
+        ImGui::SameLine();
+        ImGui::BeginDisabled(context.layout.busy());
+        if (ImGui::Button(context.layout.busy() ? ICON_FA_HOURGLASS_HALF "###relayout"
+                                                : ICON_FA_ARROWS_ROTATE "###relayout")) {
+            LayoutInspectorPanel::requestCapture(context, LayoutSource::Merged);
+        }
+        ImGui::EndDisabled();
+        widgets::termTooltip(
+            "Capture layout again",
+            "Read the views again after the screen changed (the Layout panel's "
+            "Capture).");
+    }
+
     widgets::sameLineOrWrap(widgets::iconButtonWidth(ICON_FA_KEYBOARD));
-    widgets::toggleButton(ICON_FA_KEYBOARD, &typeIntoDevice_,
-                          "Type into the phone: while the pointer is over the screen, what you "
-                          "type goes to the phone (Enter, Backspace, Tab and arrows too). ASCII "
-                          "only -- a limit of `input text`.");
+    widgets::toggleButton(
+        ICON_FA_KEYBOARD, &typeIntoDevice_,
+        "Type into the phone: while the pointer is over the screen, what you "
+        "type goes to the phone (Enter, Backspace, Tab and arrows too). ASCII "
+        "only -- a limit of `input text`.");
 
     const auto restartIfRunning = [&mirror] {
         if (mirror.running()) {
@@ -178,7 +208,8 @@ void ScreenMirrorPanel::drawToolbar(AppContext& context) {
                 restartIfRunning();
             }
             ImGui::EndDisabled();
-            if (!fastAvailable) ImGui::SetItemTooltip("%s", mirror.scrcpyUnavailableReason().c_str());
+            if (!fastAvailable)
+                ImGui::SetItemTooltip("%s", mirror.scrcpyUnavailableReason().c_str());
             if (ImGui::Selectable("Compatible  (screencap)", engine == 1)) {
                 mirror.setEngine(MirrorEngine::Screencap);
                 restartIfRunning();
@@ -191,7 +222,8 @@ void ScreenMirrorPanel::drawToolbar(AppContext& context) {
             "itself on start), which streams the phone's hardware video encoder -- 30-60 fps, "
             "with real touch: a drag is a drag. Decoded here with FFmpeg.\n\n"
             "Compatible: `screencap` loops over plain adb. A few frames per second and "
-            "approximated gestures, but it needs nothing on the phone. Fast falls back to it by "
+            "approximated gestures, but it needs nothing on the phone. Fast falls back to it "
+            "by "
             "itself if the server cannot start.");
     }
 
@@ -203,10 +235,11 @@ void ScreenMirrorPanel::drawToolbar(AppContext& context) {
             mirror.setCompression(compress);
             restartIfRunning();
         }
-        widgets::termTooltip("gzip on the phone",
-                             "Compress each frame on the phone before sending it. Usually far less "
-                             "data over USB. Turn off for an emulator, or if the phone's own CPU -- "
-                             "not the cable -- turns out to be the bottleneck.");
+        widgets::termTooltip(
+            "gzip on the phone",
+            "Compress each frame on the phone before sending it. Usually far less "
+            "data over USB. Turn off for an emulator, or if the phone's own CPU -- "
+            "not the cable -- turns out to be the bottleneck.");
 
         widgets::sameLineOrWrap(190.0F);
         int workers = mirror.workerCount();
@@ -217,19 +250,21 @@ void ScreenMirrorPanel::drawToolbar(AppContext& context) {
         }
         widgets::termTooltip(
             "Concurrent screencap loops",
-            "`screencap` itself -- not adb, not USB -- is the slow part: ~170 ms on a mid-range "
+            "`screencap` itself -- not adb, not USB -- is the slow part: ~170 ms on a "
+            "mid-range "
             "phone for one capture. It is not serialized, though, so running several loops at "
             "once genuinely helps: measured on a real phone, 1 stream ~4 fps, 3 ~12 fps, 6 ~16 "
             "fps -- real gains, but each extra stream buys less and spends more of the phone's "
             "own CPU on the mirror instead of whatever you are profiling.");
-
     }
 
     // Text field: for longer text than typing passthrough is comfortable for.
     ImGui::SetNextItemWidth(std::max(140.0F, ImGui::GetContentRegionAvail().x -
-                                                 widgets::iconButtonWidth(ICON_FA_PAPER_PLANE) - 8.0F));
-    const bool enter = ImGui::InputTextWithHint("##sendtext", ICON_FA_KEYBOARD " text to type on the phone",
-                                                &textField_, ImGuiInputTextFlags_EnterReturnsTrue);
+                                                 widgets::iconButtonWidth(ICON_FA_PAPER_PLANE) -
+                                                 8.0F));
+    const bool enter =
+        ImGui::InputTextWithHint("##sendtext", ICON_FA_KEYBOARD " text to type on the phone",
+                                 &textField_, ImGuiInputTextFlags_EnterReturnsTrue);
     ImGui::SameLine();
     ImGui::BeginDisabled(textField_.empty());
     if ((ImGui::Button(ICON_FA_PAPER_PLANE) || enter) && !textField_.empty()) {
@@ -250,17 +285,18 @@ void ScreenMirrorPanel::drawToolbar(AppContext& context) {
         ImGui::TextColored(palette.bad, "%s", stats.error.c_str());
     } else if (shown_) {
         if (stats.engine == MirrorEngine::Scrcpy) {
-            ImGui::TextDisabled("%u x %u  |  %.0f fps  |  %s/frame H.264  |  fast%s", shown_->width,
-                                shown_->height, stats.fps,
+            ImGui::TextDisabled("%u x %u  |  %.0f fps  |  %s/frame H.264  |  fast%s",
+                                shown_->width, shown_->height, stats.fps,
                                 humanBytes(static_cast<double>(stats.lastFrameBytes)).c_str(),
                                 stats.running ? "" : "  |  paused");
-            widgets::termTooltip("Fast engine  (scrcpy)",
-                                 "The phone's hardware encoder streams H.264, decoded here. It "
-                                 "only sends a frame when the screen changes, so a still screen "
-                                 "shows a low frame rate -- that is not lag.");
+            widgets::termTooltip(
+                "Fast engine  (scrcpy)",
+                "The phone's hardware encoder streams H.264, decoded here. It "
+                "only sends a frame when the screen changes, so a still screen "
+                "shows a low frame rate -- that is not lag.");
         } else {
-            ImGui::TextDisabled("%u x %u  |  %.1f fps  |  %s/frame  |  %d stream%s%s", shown_->width,
-                                shown_->height, stats.fps,
+            ImGui::TextDisabled("%u x %u  |  %.1f fps  |  %s/frame  |  %d stream%s%s",
+                                shown_->width, shown_->height, stats.fps,
                                 humanBytes(static_cast<double>(stats.lastFrameBytes)).c_str(),
                                 stats.workers, stats.workers == 1 ? "" : "s",
                                 stats.running ? "" : "  |  paused");
@@ -306,22 +342,26 @@ void ScreenMirrorPanel::handlePointer(AppContext& context, ImVec2 imageMin, floa
             pressing_ = true;
             pressDevice_ = now;
             lastTouch_ = now;
-            context.mirror.touch(ScreenMirror::Touch::Down, static_cast<int>(now.x), static_cast<int>(now.y));
+            context.mirror.touch(ScreenMirror::Touch::Down, static_cast<int>(now.x),
+                                 static_cast<int>(now.y));
         } else if (pressing_ && ImGui::IsItemActive() &&
                    (static_cast<int>(now.x) != static_cast<int>(lastTouch_.x) ||
                     static_cast<int>(now.y) != static_cast<int>(lastTouch_.y))) {
             lastTouch_ = now;
-            context.mirror.touch(ScreenMirror::Touch::Move, static_cast<int>(now.x), static_cast<int>(now.y));
+            context.mirror.touch(ScreenMirror::Touch::Move, static_cast<int>(now.x),
+                                 static_cast<int>(now.y));
         }
         if (pressing_ && ImGui::IsItemDeactivated()) {
             pressing_ = false;
-            context.mirror.touch(ScreenMirror::Touch::Up, static_cast<int>(now.x), static_cast<int>(now.y));
+            context.mirror.touch(ScreenMirror::Touch::Up, static_cast<int>(now.x),
+                                 static_cast<int>(now.y));
             ripples_.push_back({now, ImGui::GetTime()});
         }
         // The wheel is a real scroll event at the pointer, as with a mouse
         // plugged into the phone.
         if (hovered && io.MouseWheel != 0.0F) {
-            context.mirror.scroll(static_cast<int>(now.x), static_cast<int>(now.y), io.MouseWheel);
+            context.mirror.scroll(static_cast<int>(now.x), static_cast<int>(now.y),
+                                  io.MouseWheel);
         }
         return;
     }
@@ -336,15 +376,23 @@ void ScreenMirrorPanel::handlePointer(AppContext& context, ImVec2 imageMin, floa
         pressing_ = false;
         const ImVec2 releaseDevice = toDevice(io.MousePos);
         const Gesture g = classifyGesture(
-            DevicePoint{pressDevice_.x, pressDevice_.y}, DevicePoint{releaseDevice.x, releaseDevice.y},
+            DevicePoint{pressDevice_.x, pressDevice_.y},
+            DevicePoint{releaseDevice.x, releaseDevice.y},
             std::hypot(io.MousePos.x - pressScreen_.x, io.MousePos.y - pressScreen_.y),
             ImGui::GetTime() - pressTime_);
         switch (g.kind) {
-            case Gesture::Kind::Tap: context.mirror.tap(g.x1, g.y1); break;
-            case Gesture::Kind::LongPress: context.mirror.longPress(g.x1, g.y1); break;
-            case Gesture::Kind::Swipe: context.mirror.swipe(g.x1, g.y1, g.x2, g.y2, g.durationMs); break;
+            case Gesture::Kind::Tap:
+                context.mirror.tap(g.x1, g.y1);
+                break;
+            case Gesture::Kind::LongPress:
+                context.mirror.longPress(g.x1, g.y1);
+                break;
+            case Gesture::Kind::Swipe:
+                context.mirror.swipe(g.x1, g.y1, g.x2, g.y2, g.durationMs);
+                break;
         }
-        ripples_.push_back({g.kind == Gesture::Kind::Swipe ? releaseDevice : pressDevice_, ImGui::GetTime()});
+        ripples_.push_back(
+            {g.kind == Gesture::Kind::Swipe ? releaseDevice : pressDevice_, ImGui::GetTime()});
     }
 
     // Wheel: gathered for a moment, then sent as one swipe from the middle.
@@ -356,8 +404,9 @@ void ScreenMirrorPanel::handlePointer(AppContext& context, ImVec2 imageMin, floa
         const float distance = std::clamp(std::abs(wheelAccumulated_), 1.0F, 3.0F) * h * 0.12F;
         // Wheel up shows what is above: the finger moves down.
         const float direction = wheelAccumulated_ > 0.0F ? 1.0F : -1.0F;
-        context.mirror.swipe(static_cast<int>(cx), static_cast<int>(cy - direction * distance * 0.5F),
-                             static_cast<int>(cx), static_cast<int>(cy + direction * distance * 0.5F), 200);
+        context.mirror.swipe(
+            static_cast<int>(cx), static_cast<int>(cy - direction * distance * 0.5F),
+            static_cast<int>(cx), static_cast<int>(cy + direction * distance * 0.5F), 200);
         wheelAccumulated_ = 0.0F;
         lastWheelSend_ = ImGui::GetTime();
     }
@@ -380,11 +429,16 @@ void ScreenMirrorPanel::handleTyping(AppContext& context) {
             }
         }
         static constexpr std::pair<ImGuiKey, const char*> kKeys[] = {
-            {ImGuiKey_Enter, "KEYCODE_ENTER"},       {ImGuiKey_KeypadEnter, "KEYCODE_ENTER"},
-            {ImGuiKey_Backspace, "KEYCODE_DEL"},     {ImGuiKey_Delete, "KEYCODE_FORWARD_DEL"},
-            {ImGuiKey_Tab, "KEYCODE_TAB"},           {ImGuiKey_Escape, "KEYCODE_BACK"},
-            {ImGuiKey_LeftArrow, "KEYCODE_DPAD_LEFT"}, {ImGuiKey_RightArrow, "KEYCODE_DPAD_RIGHT"},
-            {ImGuiKey_UpArrow, "KEYCODE_DPAD_UP"},   {ImGuiKey_DownArrow, "KEYCODE_DPAD_DOWN"},
+            {ImGuiKey_Enter, "KEYCODE_ENTER"},
+            {ImGuiKey_KeypadEnter, "KEYCODE_ENTER"},
+            {ImGuiKey_Backspace, "KEYCODE_DEL"},
+            {ImGuiKey_Delete, "KEYCODE_FORWARD_DEL"},
+            {ImGuiKey_Tab, "KEYCODE_TAB"},
+            {ImGuiKey_Escape, "KEYCODE_BACK"},
+            {ImGuiKey_LeftArrow, "KEYCODE_DPAD_LEFT"},
+            {ImGuiKey_RightArrow, "KEYCODE_DPAD_RIGHT"},
+            {ImGuiKey_UpArrow, "KEYCODE_DPAD_UP"},
+            {ImGuiKey_DownArrow, "KEYCODE_DPAD_DOWN"},
         };
         for (const auto& [key, keycode] : kKeys) {
             if (ImGui::IsKeyPressed(key)) {
@@ -394,7 +448,8 @@ void ScreenMirrorPanel::handleTyping(AppContext& context) {
         }
     }
     // Typed text goes in short bursts: one `input text` per burst, not per key.
-    if (!pendingTyping_.empty() && ImGui::GetTime() - lastTypedTime_ > kTypingFlushSeconds) flush();
+    if (!pendingTyping_.empty() && ImGui::GetTime() - lastTypedTime_ > kTypingFlushSeconds)
+        flush();
 }
 
 void ScreenMirrorPanel::drawScreen(AppContext& context) {
@@ -406,7 +461,8 @@ void ScreenMirrorPanel::drawScreen(AppContext& context) {
         if (wantRunning_ && stats.error.empty()) {
             ImGui::TextDisabled(ICON_FA_HOURGLASS_HALF "  Waiting for the first frame...");
         } else if (!wantRunning_) {
-            ImGui::TextDisabled(ICON_FA_MOBILE_SCREEN "  Press " ICON_FA_PLAY " to show the phone's screen.");
+            ImGui::TextDisabled(ICON_FA_MOBILE_SCREEN "  Press " ICON_FA_PLAY
+                                                      " to show the phone's screen.");
             ImGui::Spacing();
             ImGui::PushStyleColor(ImGuiCol_Text, palette.muted);
             ImGui::TextWrapped(
@@ -429,12 +485,75 @@ void ScreenMirrorPanel::drawScreen(AppContext& context) {
 
     ImGui::SetCursorScreenPos(imageMin);
     ImGui::InvisibleButton("##screen", size);
-    handlePointer(context, imageMin, scale);
-    if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+    LayoutInspector::Focus& focus = context.layout.focus();
+    // Layout coordinates are the device's; the frame may be scaled down.
+    const LayoutSnapshot* layout = focus.snapshot.get();
+    if (layout != nullptr &&
+        (layout->screenWidth <= 0 || layout->screenHeight <= 0 ||
+         (layout->screenWidth > layout->screenHeight) != (shown_->width > shown_->height))) {
+        layout = nullptr;  // rotated since the capture
+    }
+    const float toLayout = layout != nullptr ? static_cast<float>(layout->screenWidth) /
+                                                   static_cast<float>(shown_->width)
+                                             : 1.0F;
+    if (focus.pickOnScreen) {
+        const bool over = ImGui::IsItemHovered();
+        if (over && layout != nullptr) {
+            const ImVec2 mouse = ImGui::GetIO().MousePos;
+            const int x = static_cast<int>((mouse.x - imageMin.x) / scale * toLayout);
+            const int y = static_cast<int>((mouse.y - imageMin.y) / scale * toLayout);
+            const int hit = hitTest(layout->nodes, layout->rootsFor(focus.window), x, y, false);
+            focus.hovered = hit;
+            if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
+                focus.selected = hit;
+                focus.revealSelected = hit >= 0;
+            }
+            ImGui::SetMouseCursor(ImGuiMouseCursor_Arrow);
+        } else if (pickHovering_) {
+            focus.hovered = -1;
+        }
+        pickHovering_ = over;
+    } else {
+        handlePointer(context, imageMin, scale);
+        if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+    }
 
     ImDrawList* draw = ImGui::GetWindowDrawList();
     draw->AddImage(ImTextureRef{static_cast<ImTextureID>(texture_)}, imageMin, imageMax);
     draw->AddRect(imageMin, imageMax, ImGui::GetColorU32(ImGuiCol_Border));
+
+    // The Layout panel's hovered and selected views, on the live screen.
+    if (layout != nullptr) {
+        const float k = scale / toLayout;
+        const auto viewRect = [&](int node, ImU32 fill, ImU32 line, float thickness) {
+            if (node < 0 || node >= static_cast<int>(layout->nodes.size())) return;
+            const LayoutRect& b = layout->nodes[static_cast<std::size_t>(node)].bounds;
+            const ImVec2 a{imageMin.x + static_cast<float>(b.left) * k,
+                           imageMin.y + static_cast<float>(b.top) * k};
+            const ImVec2 c{imageMin.x + static_cast<float>(b.right) * k,
+                           imageMin.y + static_cast<float>(b.bottom) * k};
+            draw->PushClipRect(imageMin, imageMax, true);
+            draw->AddRectFilled(a, c, fill);
+            draw->AddRect(a, c, line, 0.0F, 0, thickness);
+            draw->PopClipRect();
+        };
+        ImVec4 tint = palette.accent;
+        tint.w = 0.15F;
+        const ImU32 fill = ImGui::ColorConvertFloat4ToU32(tint);
+        const ImU32 line = ImGui::ColorConvertFloat4ToU32(palette.accent);
+        if (focus.pickOnScreen) viewRect(focus.selected, fill, line, 2.5F);
+        if (focus.hovered != focus.selected || !focus.pickOnScreen)
+            viewRect(focus.hovered, fill, line, 1.5F);
+        if (focus.pickOnScreen && ImGui::IsItemHovered() && focus.hovered >= 0) {
+            const LayoutNode& n = layout->nodes[static_cast<std::size_t>(focus.hovered)];
+            std::string tip{n.simpleName()};
+            if (!n.resourceId.empty()) tip += "  #" + std::string{n.idName()};
+            tip += format("\n%.0f x %.0f dp", static_cast<double>(layout->dp(n.bounds.width())),
+                          static_cast<double>(layout->dp(n.bounds.height())));
+            if (!n.text.empty()) tip += "\n\"" + n.text.substr(0, 60) + "\"";
+            ImGui::SetTooltip("%s", tip.c_str());
+        }
+    }
 
     const auto toScreen = [&](ImVec2 device) {
         return ImVec2{imageMin.x + device.x * scale, imageMin.y + device.y * scale};
@@ -451,7 +570,8 @@ void ScreenMirrorPanel::drawScreen(AppContext& context) {
         const float t = static_cast<float>((now - r.time) / kRippleSeconds);
         ImVec4 color = palette.accent;
         color.w = 1.0F - t;
-        draw->AddCircle(toScreen(r.device), 8.0F + 22.0F * t, ImGui::ColorConvertFloat4ToU32(color), 0, 3.0F);
+        draw->AddCircle(toScreen(r.device), 8.0F + 22.0F * t,
+                        ImGui::ColorConvertFloat4ToU32(color), 0, 3.0F);
     }
 }
 

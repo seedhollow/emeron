@@ -1,0 +1,42 @@
+package com.lunaris.interactive.chapter
+panel Layout
+wait 2
+click 564 381          # close Frame Time
+wait 0.5
+click 157 68           # close Device Files
+wait 0.5
+drag 840 694 840 985   # bottom dock down
+wait 6
+# select a cover, hover its neighbour
+click 655 470
+move 753 520
+wait 1
+shot ../layout-inspector.png
+hold alt
+move 753 521
+wait 0.5
+shot ../layout-redlines.png
+release alt
+# 3D
+click 528 97
+wait 1
+drag 700 600 760 590
+wait 1
+click 528 97
+# audit tab
+click 1147 134
+wait 1
+shot ../layout-audit.png
+# filter
+click 193 134
+type langit
+wait 1
+shot ../layout-filter.png
+# inspect on the live screen
+click 1325 97
+wait 4
+click 1635 97
+wait 1
+move 1500 500
+wait 1.5
+shot ../screen-inspect.png

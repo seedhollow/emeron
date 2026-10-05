@@ -37,6 +37,10 @@ public:
         std::optional<std::filesystem::path> screenshotPath;
         double screenshotDelaySeconds = 4.0;
 
+        // Development aid: drive the UI with synthetic input and save
+        // screenshots along the way. See app/InputScript.h.
+        std::optional<std::filesystem::path> scriptPath;
+
         // Package to target from the start, as if picked in the toolbar.
         std::optional<std::string> initialPackage;
 
