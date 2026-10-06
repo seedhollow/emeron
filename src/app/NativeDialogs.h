@@ -48,6 +48,11 @@ void shutdown();
 
 // Every backend asks before replacing an existing file, so a Chosen path that
 // already exists is one the user agreed to overwrite.
+// `extensions` is a comma-separated list without dots, e.g. "apk,dex"; empty
+// for any file. `filterName` labels it in the dialog.
+[[nodiscard]] Choice openFile(std::string_view title, const std::filesystem::path& startIn,
+                              std::string_view filterName, std::string_view extensions);
+
 [[nodiscard]] Choice saveFile(std::string_view title, const std::filesystem::path& startIn,
                               std::string_view suggestedName);
 

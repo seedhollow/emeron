@@ -65,6 +65,7 @@
 #include "ui/panels/AppInspectorPanel.h"
 #include "ui/panels/ScreenMirrorPanel.h"
 #include "ui/panels/LayoutInspectorPanel.h"
+#include "ui/panels/CodeBrowserPanel.h"
 #include "ui/panels/PerfettoPanel.h"
 #include "ui/panels/SensorPanel.h"
 #include "ui/Widgets.h"
@@ -193,8 +194,11 @@ struct Application::Impl {
     std::unique_ptr<LayoutInspector> layout;
     std::unique_ptr<PerfettoCapture> perfetto;
     std::unique_ptr<TraceProcessor> traceProcessor;
-    std::unique_ptr<ThreadPool> pool;
+    // The dispatcher before the pool: members are destroyed in reverse, so the
+    // pool joins its workers while the dispatcher a running task posts its
+    // result to (a layout capture, an APK pull) still exists.
     std::unique_ptr<Dispatcher> dispatcher;
+    std::unique_ptr<ThreadPool> pool;
     std::unique_ptr<PanelRegistry> panels;
     DeviceToolbar toolbar;
 
@@ -567,6 +571,7 @@ void Application::Impl::registerPanels() {
     panels->add<AppInspectorPanel>();
     panels->add<ScreenMirrorPanel>();
     panels->add<LayoutInspectorPanel>();
+    panels->add<CodeBrowserPanel>();
     panels->add<DeviceInfoPanel>();
     panels->add<SensorPanel>();
     panels->add<PerfettoPanel>();
@@ -594,6 +599,7 @@ void Application::Impl::buildDefaultLayout(ImGuiID dockspaceId) {
     ImGui::DockBuilderDockWindow(Panel::windowKey(PerfettoPanel::kId).c_str(), center);
     ImGui::DockBuilderDockWindow(Panel::windowKey(AppInspectorPanel::kId).c_str(), center);
     ImGui::DockBuilderDockWindow(Panel::windowKey(LayoutInspectorPanel::kId).c_str(), center);
+    ImGui::DockBuilderDockWindow(Panel::windowKey(CodeBrowserPanel::kId).c_str(), center);
     ImGui::DockBuilderDockWindow(Panel::windowKey(FrameTimePanel::kId).c_str(), centerLower);
     ImGui::DockBuilderDockWindow(Panel::windowKey(FileExplorerPanel::kId).c_str(), left);
     ImGui::DockBuilderDockWindow(Panel::windowKey(DeviceInfoPanel::kId).c_str(), right);
@@ -849,6 +855,10 @@ void Application::Impl::drawFrame(AppContext& context) {
         if (frontTabsCountdown == 0) selectDefaultTabs = false;
     }
 
+    if (!context.browseCodeRequest.empty()) {
+        if (Panel* code = panels->find(CodeBrowserPanel::kId)) code->setVisible(true);
+        scriptPanel = CodeBrowserPanel::kId;
+    }
     if (!scriptPanel.empty() && selectDockTab(Panel::windowKey(scriptPanel).c_str())) {
         ImGui::SetWindowFocus(Panel::windowKey(scriptPanel).c_str());
         scriptPanel.clear();

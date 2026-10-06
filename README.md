@@ -13,6 +13,7 @@ Five tools in one dockable window:
 | **Apps** | Every installed app; pick one to see version, SDK levels, installer, signing, permissions (grant/revoke runtime ones), components, APK files, storage, memory, compilation state and the raw dump. Open, force stop, save APK, clear data, uninstall | `pm list packages`, `dumpsys package`, `pm path`, `cmd appops`, `dumpsys meminfo`, `dumpsys diskstats` |
 | **Screen** | The device's screen, live. Click to tap, hold to long-press, drag to swipe, wheel to scroll; Back/Home/Recents/Power/Volume; type into the phone; save screenshots | scrcpy server + FFmpeg (fast), or `screencap \| gzip -1` + `input` (compatible) |
 | **Layout** | The View hierarchy of any app on screen, release builds included: component tree with search, screenshot with every view outlined (2D or exploded 3D), Alt-redlines in px/dp, properties, Copy as Espresso/UiAutomator/adb tap, tap on device, and an audit of touch targets, labels and layout cost. Inspect mode in Screen picks views on the live screen | `dumpsys activity top`, `dumpsys window`, `uiautomator dump`, `screencap` — one round trip |
+| **Code** | An app's decompiled source, the jadx-gui way: package tree, Java or smali, go to declaration, find usages, full-text search, decoded manifest and resources. APKs (base and splits) come from the phone or a file | `pm path`, `adb pull`, [jadx](https://github.com/skylot/jadx) on the host |
 | **Device Info** | Build, SoC, display, storage, network, tracing posture, and the full raw `getprop` | `getprop` + one batched probe |
 | **Sensors** | Full sensor enumeration with ranges, rates, FIFO depth; best-effort live values | `dumpsys sensorservice` |
 | **Logcat** | Device log scoped to the selected process, with host-side level/tag/text filtering | `adb logcat -v threadtime` |
@@ -95,6 +96,12 @@ configure summary's `dialogs:` line says which you got.
   or `PATH`, or pass `--trace-processor <path>`. Those directories are searched
   even when emeron is launched from Finder or an IDE, where `~/.zshrc`'s PATH
   does not apply. The Explore tab's path tooltip says which copy was used.
+- **jadx** and a **JDK 11+** — only for the Code panel. `brew install jadx`,
+  your package manager, or a release zip from
+  [github.com/skylot/jadx/releases](https://github.com/skylot/jadx/releases).
+  Found via `$EMERON_JADX`, then `jadx` on `PATH`, then the usual install
+  folders; the panel's gear menu can point at it too. Java comes from
+  `$JAVA_HOME`, then `PATH`.
 
 ## Theme
 
@@ -290,6 +297,43 @@ build: it reads whatever is on the phone's screen.
 `uiautomator` fails while the screen is animating, and while another
 automation tool (an Appium or Espresso run) holds the accessibility
 service. The capture then says so, and the views are shown without text.
+
+## Code
+
+Browse an app's decompiled source without leaving emeron, and without
+decompiling the whole APK first.
+
+* **Open** the app picked in the toolbar (its button in the Code panel, or
+  **Browse code** in the Apps panel), or open / drop an APK, split APKs
+  (`.apks`, `.xapk`), DEX, JAR or AAR. APKs from the phone are copied to
+  `<workspace>/decompile/<package>/` and reused while their size matches.
+* emeron runs **one jadx JVM per opened app** and talks to it over a pipe
+  (`assets/jadx/JadxBridge.java`, run on top of your jadx jar). jadx reads the
+  APK once -- about 2 s for 16 000 classes -- and after that a class
+  decompiles when it is opened, usually in milliseconds. Nothing is
+  decompiled up front or written to disk, and decompiled code is kept in a
+  bounded cache, so big apps do not run the JVM out of memory.
+* **Classes**: the package tree, opened at the app's own package; Ctrl+N
+  filters by class name. **Resources**: every file in the APK; the manifest,
+  layouts and `resources.arsc` values are decoded to XML.
+* **Code view**: Java or smali, syntax colours from jadx's own annotations
+  (class, method, field), line numbers, selection and copy, find in file
+  (Ctrl/Cmd+F), and every occurrence of the word under the caret.
+* **Navigate** like jadx-gui: Cmd/Ctrl+click or **D** goes to the
+  declaration, **X** finds usages, Alt+Left / Alt+Right (or the mouse's
+  back/forward buttons) go back and forth, and **Members** jumps to a
+  method or field. On macOS, Ctrl+click is a right-click and opens the
+  context menu, which has the same actions.
+* **Search** (Ctrl/Cmd+Shift+F) runs over decompiled code on every core,
+  streaming hits as it goes; **Skip libraries** leaves androidx, kotlin,
+  Play services, OkHttp and similar out unless they are the app's own
+  package.
+* **Deobfuscate names** (gear menu) restarts jadx with `--deobf`, which
+  renames short or clashing names so they can be told apart. No tool can
+  recover names R8 removed.
+
+Decompiled code is for understanding and debugging; respect the license of
+apps that are not yours.
 
 ## Notifications
 

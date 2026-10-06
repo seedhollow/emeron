@@ -68,6 +68,10 @@ struct AppContext {
     std::vector<std::filesystem::path> droppedPaths;
     bool droppedPathsConsumed = false;
 
+    // A package to decompile, set by the Apps panel's Browse code button.
+    // Application brings the Code panel forward; the panel consumes it.
+    std::string browseCodeRequest;
+
     [[nodiscard]] bool hasDevice() const noexcept { return !selectedSerial.empty(); }
     [[nodiscard]] bool hasPackage() const noexcept { return !selectedPackage.empty(); }
 };

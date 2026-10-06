@@ -5,19 +5,19 @@
 #if defined(EMERON_HAS_NATIVE_DIALOGS)
 // glfw3native.h needs to know which native handles to declare, and
 // nfd_glfw3.h uses them to turn the GLFW window into a dialog parent.
-#  define GLFW_INCLUDE_NONE
-#  if defined(_WIN32)
-#    define GLFW_EXPOSE_NATIVE_WIN32
-#  elif defined(__APPLE__)
-#    define GLFW_EXPOSE_NATIVE_COCOA
-#  else
-#    define GLFW_EXPOSE_NATIVE_X11
-#    if defined(EMERON_NFD_WAYLAND)
-#      define GLFW_EXPOSE_NATIVE_WAYLAND
-#    endif
-#  endif
-#  include <nfd.h>
-#  include <nfd_glfw3.h>
+#define GLFW_INCLUDE_NONE
+#if defined(_WIN32)
+#define GLFW_EXPOSE_NATIVE_WIN32
+#elif defined(__APPLE__)
+#define GLFW_EXPOSE_NATIVE_COCOA
+#else
+#define GLFW_EXPOSE_NATIVE_X11
+#if defined(EMERON_NFD_WAYLAND)
+#define GLFW_EXPOSE_NATIVE_WAYLAND
+#endif
+#endif
+#include <nfd.h>
+#include <nfd_glfw3.h>
 #endif
 
 namespace em::dialogs {
@@ -127,6 +127,35 @@ Choice pickFolder(std::string_view title, const std::filesystem::path& startIn) 
 #else
     (void)title;
     (void)startIn;
+    return Choice{};
+#endif
+}
+
+Choice openFile(std::string_view title, const std::filesystem::path& startIn,
+                std::string_view filterName, std::string_view extensions) {
+#if defined(EMERON_HAS_NATIVE_DIALOGS)
+    if (!gReady) return Choice{};
+
+    const std::string titleText{title};
+    const std::string start = toUtf8(startIn);
+    const std::string name{filterName};
+    const std::string spec{extensions};
+    const nfdu8filteritem_t filter{name.c_str(), spec.c_str()};
+
+    nfdopendialogu8args_t args{};
+    args.filterList = spec.empty() ? nullptr : &filter;
+    args.filterCount = spec.empty() ? 0 : 1;
+    args.defaultPath = start.empty() ? nullptr : start.c_str();
+    args.title = titleText.c_str();
+    args.parentWindow = parentHandle();
+
+    nfdu8char_t* outPath = nullptr;
+    return finish(NFD_OpenDialogU8_With(&outPath, &args), outPath);
+#else
+    (void)title;
+    (void)startIn;
+    (void)filterName;
+    (void)extensions;
     return Choice{};
 #endif
 }

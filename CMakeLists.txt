@@ -61,6 +61,7 @@ add_library(emeron_core STATIC
     src/collect/ScreenMirror.cpp
     src/collect/ScrcpyProtocol.cpp
     src/collect/LayoutInspector.cpp
+    src/collect/JadxSession.cpp
 )
 
 target_include_directories(emeron_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
@@ -115,7 +116,19 @@ add_custom_command(
     COMMENT "Embedding the scrcpy server"
     VERBATIM)
 
-add_library(emeron_assets STATIC "${EMERON_FA_CPP}" "${EMERON_SCRCPY_CPP}")
+# The jadx bridge (assets/jadx/JadxBridge.java), written to the workspace and
+# run on the user's JVM by the Code panel.
+set(EMERON_JADX_BRIDGE "${CMAKE_CURRENT_SOURCE_DIR}/assets/jadx/JadxBridge.java")
+set(EMERON_JADX_BRIDGE_CPP "${CMAKE_CURRENT_BINARY_DIR}/generated/jadx_bridge.cpp")
+add_custom_command(
+    OUTPUT  "${EMERON_JADX_BRIDGE_CPP}"
+    COMMAND "${CMAKE_COMMAND}" -DINPUT=${EMERON_JADX_BRIDGE} -DOUTPUT=${EMERON_JADX_BRIDGE_CPP}
+            -DSYMBOL=kJadxBridge -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedFile.cmake"
+    DEPENDS "${EMERON_JADX_BRIDGE}" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedFile.cmake"
+    COMMENT "Embedding the jadx bridge"
+    VERBATIM)
+
+add_library(emeron_assets STATIC "${EMERON_FA_CPP}" "${EMERON_SCRCPY_CPP}" "${EMERON_JADX_BRIDGE_CPP}")
 target_compile_definitions(emeron_assets PUBLIC EMERON_SCRCPY_VERSION="${EMERON_SCRCPY_VERSION}")
 target_include_directories(emeron_assets SYSTEM PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/vendor/IconFontCppHeaders")
@@ -148,6 +161,8 @@ add_executable(emeron
     src/ui/panels/AppInspectorPanel.cpp
     src/ui/panels/ScreenMirrorPanel.cpp
     src/ui/panels/LayoutInspectorPanel.cpp
+    src/ui/panels/CodeBrowserPanel.cpp
+    src/ui/CodeView.cpp
 )
 
 target_compile_definitions(emeron PRIVATE EMERON_VERSION="${PROJECT_VERSION}")

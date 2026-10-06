@@ -23,23 +23,40 @@ namespace {
 
 const char* androidVersion(int sdk) {
     switch (sdk) {
-        case 21: return "Android 5.0";
-        case 22: return "Android 5.1";
-        case 23: return "Android 6";
-        case 24: return "Android 7.0";
-        case 25: return "Android 7.1";
-        case 26: return "Android 8.0";
-        case 27: return "Android 8.1";
-        case 28: return "Android 9";
-        case 29: return "Android 10";
-        case 30: return "Android 11";
-        case 31: return "Android 12";
-        case 32: return "Android 12L";
-        case 33: return "Android 13";
-        case 34: return "Android 14";
-        case 35: return "Android 15";
-        case 36: return "Android 16";
-        default: return sdk > 36 ? "newer than Android 16" : "older than Android 5";
+        case 21:
+            return "Android 5.0";
+        case 22:
+            return "Android 5.1";
+        case 23:
+            return "Android 6";
+        case 24:
+            return "Android 7.0";
+        case 25:
+            return "Android 7.1";
+        case 26:
+            return "Android 8.0";
+        case 27:
+            return "Android 8.1";
+        case 28:
+            return "Android 9";
+        case 29:
+            return "Android 10";
+        case 30:
+            return "Android 11";
+        case 31:
+            return "Android 12";
+        case 32:
+            return "Android 12L";
+        case 33:
+            return "Android 13";
+        case 34:
+            return "Android 14";
+        case 35:
+            return "Android 15";
+        case 36:
+            return "Android 16";
+        default:
+            return sdk > 36 ? "newer than Android 16" : "older than Android 5";
     }
 }
 
@@ -114,10 +131,14 @@ std::string describePermissionFlags(std::string_view flags) {
 
 const char* kindLabel(AppComponent::Kind kind) {
     switch (kind) {
-        case AppComponent::Kind::Activity: return "Screens (activities)";
-        case AppComponent::Kind::Service:  return "Background services";
-        case AppComponent::Kind::Receiver: return "Broadcast receivers";
-        case AppComponent::Kind::Provider: return "Content providers";
+        case AppComponent::Kind::Activity:
+            return "Screens (activities)";
+        case AppComponent::Kind::Service:
+            return "Background services";
+        case AppComponent::Kind::Receiver:
+            return "Broadcast receivers";
+        case AppComponent::Kind::Provider:
+            return "Content providers";
     }
     return "";
 }
@@ -125,7 +146,8 @@ const char* kindLabel(AppComponent::Kind kind) {
 const char* kindExplanation(AppComponent::Kind kind) {
     switch (kind) {
         case AppComponent::Kind::Activity:
-            return "Screens the app shows. dumpsys only lists those with an intent filter -- the "
+            return "Screens the app shows. dumpsys only lists those with an intent filter -- "
+                   "the "
                    "ones other apps or the launcher can open.";
         case AppComponent::Kind::Service:
             return "Work that runs without a screen. Only services with an intent filter are "
@@ -237,16 +259,15 @@ void AppInspectorPanel::reloadDetails(AppContext& context) {
     crash::setBreadcrumb("Apps: reading " + selected_);
     detailsLoading_ = true;
     const std::uint64_t generation = generation_;
-    context.apps.loadDetails(context.pool, context.dispatcher, selected_,
-                             [this, generation](AppDetails details) {
-                                 // A slow dump can land after another app was picked.
-                                 if (generation != generation_ ||
-                                     details.packageName != selected_) {
-                                     return;
-                                 }
-                                 detailsLoading_ = false;
-                                 details_ = std::move(details);
-                             });
+    context.apps.loadDetails(
+        context.pool, context.dispatcher, selected_, [this, generation](AppDetails details) {
+            // A slow dump can land after another app was picked.
+            if (generation != generation_ || details.packageName != selected_) {
+                return;
+            }
+            detailsLoading_ = false;
+            details_ = std::move(details);
+        });
 }
 
 void AppInspectorPanel::runAction(AppContext& context, AppAction action, std::string argument) {
@@ -262,8 +283,8 @@ void AppInspectorPanel::runAction(AppContext& context, AppAction action, std::st
             lastAction_ = std::move(result);
             // Permission toggles are visible right where they were clicked;
             // the rest (uninstall, clear data, launch...) get a toast too.
-            const bool permission = action == AppAction::GrantPermission ||
-                                    action == AppAction::RevokePermission;
+            const bool permission =
+                action == AppAction::GrantPermission || action == AppAction::RevokePermission;
             if (!lastAction_.ok) {
                 notify::error(target, lastAction_.message);
             } else if (!permission) {
@@ -345,17 +366,20 @@ void AppInspectorPanel::drawList(AppContext& context) {
     ImGui::BeginDisabled(listLoading_);
     if (ImGui::Button(ICON_FA_ARROWS_ROTATE)) refreshList(context);
     ImGui::EndDisabled();
-    widgets::termTooltip("Reload  (pm list packages)", "Read the list of installed apps again.");
+    widgets::termTooltip("Reload  (pm list packages)",
+                         "Read the list of installed apps again.");
 
     ImGui::SameLine();
-    static constexpr const char* kKinds[] = {"Installed by you", "Came with the phone", "All apps"};
+    static constexpr const char* kKinds[] = {"Installed by you", "Came with the phone",
+                                             "All apps"};
     ImGui::SetNextItemWidth(160.0F);
     if (ImGui::Combo("##kind", &kind_, kKinds, 3)) visibleDirty_ = true;
-    widgets::termTooltip("User / system apps  (pm list packages -3)",
-                         "\"Installed by you\" is everything installed after the phone left the "
-                         "factory -- Play Store, sideloaded APKs, adb install. \"Came with the "
-                         "phone\" is the system image, including system apps that have since "
-                         "been updated.");
+    widgets::termTooltip(
+        "User / system apps  (pm list packages -3)",
+        "\"Installed by you\" is everything installed after the phone left the "
+        "factory -- Play Store, sideloaded APKs, adb install. \"Came with the "
+        "phone\" is the system image, including system apps that have since "
+        "been updated.");
 
     ImGui::SetNextItemWidth(-1.0F);
     if (ImGui::InputTextWithHint("##appfilter", ICON_FA_FILTER " package name", &filter_)) {
@@ -370,20 +394,20 @@ void AppInspectorPanel::drawList(AppContext& context) {
     }
     if (!listError_.empty()) ImGui::TextColored(palette.bad, "%s", listError_.c_str());
 
-    const auto userCount =
-        std::count_if(apps_.begin(), apps_.end(), [](const InstalledApp& a) { return !a.system; });
+    const auto userCount = std::count_if(apps_.begin(), apps_.end(),
+                                         [](const InstalledApp& a) { return !a.system; });
     ImGui::TextDisabled("%zu shown  |  %lld installed by you, %zu in total", visible_.size(),
                         static_cast<long long>(userCount), apps_.size());
 
     constexpr ImGuiTableFlags kFlags = ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY |
-                                       ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_Sortable |
-                                       ImGuiTableFlags_Resizable;
+                                       ImGuiTableFlags_BordersInnerV |
+                                       ImGuiTableFlags_Sortable | ImGuiTableFlags_Resizable;
     if (!ImGui::BeginTable("##apps", 2, kFlags)) return;
-    ImGui::TableSetupColumn("App", ImGuiTableColumnFlags_WidthStretch |
-                                       ImGuiTableColumnFlags_DefaultSort);
-    ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed |
-                                        ImGuiTableColumnFlags_PreferSortDescending,
-                            70.0F);
+    ImGui::TableSetupColumn(
+        "App", ImGuiTableColumnFlags_WidthStretch | ImGuiTableColumnFlags_DefaultSort);
+    ImGui::TableSetupColumn(
+        "Size", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_PreferSortDescending,
+        70.0F);
     ImGui::TableSetupScrollFreeze(0, 1);
     static constexpr const char* kTerms[] = {"Package name", "Size  (dumpsys diskstats)"};
     static constexpr const char* kExplanations[] = {
@@ -422,10 +446,9 @@ void AppInspectorPanel::drawList(AppContext& context) {
                 ImGui::TextDisabled("installed by: %s", installerName(app.installer).c_str());
                 ImGui::TextDisabled("%s", app.apkPath.c_str());
                 if (app.appBytes >= 0) {
-                    ImGui::TextDisabled("app %s  |  data %s  |  cache %s",
-                                        bytesText(app.appBytes).c_str(),
-                                        bytesText(app.dataBytes).c_str(),
-                                        bytesText(app.cacheBytes).c_str());
+                    ImGui::TextDisabled(
+                        "app %s  |  data %s  |  cache %s", bytesText(app.appBytes).c_str(),
+                        bytesText(app.dataBytes).c_str(), bytesText(app.cacheBytes).c_str());
                 }
                 ImGui::EndTooltip();
             }
@@ -473,7 +496,8 @@ void AppInspectorPanel::drawHeader(AppContext& context) {
     // Status badges.
     ImGui::TextDisabled(" ");
     if (d.updatedSystemApp) {
-        const std::string term = "Updated system app -- factory version " + d.factoryVersionName;
+        const std::string term =
+            "Updated system app -- factory version " + d.factoryVersionName;
         badge(ICON_FA_CLOCK_ROTATE_LEFT " Updated system app", palette.accent, term.c_str(),
               "Came with the phone and has since been updated. Uninstalling removes only the "
               "update and goes back to the factory version.");
@@ -497,12 +521,14 @@ void AppInspectorPanel::drawHeader(AppContext& context) {
               "Release builds should never have this.");
     }
     if (d.stopped) {
-        badge(ICON_FA_BAN " Force-stopped", palette.warning, "stopped=true",
-              "Stopped by the user or by Force stop. It gets no broadcasts, alarms or jobs until "
-              "something opens it again.");
+        badge(
+            ICON_FA_BAN " Force-stopped", palette.warning, "stopped=true",
+            "Stopped by the user or by Force stop. It gets no broadcasts, alarms or jobs until "
+            "something opens it again.");
     }
     if (d.enabledState >= 2) {
-        badge(ICON_FA_BAN " Disabled", palette.bad, "enabled=2/3  (COMPONENT_ENABLED_STATE_DISABLED)",
+        badge(ICON_FA_BAN " Disabled", palette.bad,
+              "enabled=2/3  (COMPONENT_ENABLED_STATE_DISABLED)",
               "Turned off: it cannot run and is hidden from the launcher.");
     }
     if (d.suspended) {
@@ -510,22 +536,28 @@ void AppInspectorPanel::drawHeader(AppContext& context) {
               "Paused by the system, e.g. by Digital Wellbeing or a device policy.");
     }
     if (apkFor_ == d.packageName && !apkLoading_) {
-        const bool debugSigned = std::any_of(
-            apk_.signing.signers.begin(), apk_.signing.signers.end(), [](const ApkSigner& s) {
-                return !s.certificates.empty() && s.certificates[0].isDebugCertificate();
-            }) || (!apk_.v1Certificates.empty() && apk_.v1Certificates[0].isDebugCertificate());
+        const bool debugSigned =
+            std::any_of(apk_.signing.signers.begin(), apk_.signing.signers.end(),
+                        [](const ApkSigner& s) {
+                            return !s.certificates.empty() &&
+                                   s.certificates[0].isDebugCertificate();
+                        }) ||
+            (!apk_.v1Certificates.empty() && apk_.v1Certificates[0].isDebugCertificate());
         if (debugSigned) {
-            badge(ICON_FA_KEY " Debug key", palette.warning, "Signed with the Android debug key",
+            badge(ICON_FA_KEY " Debug key", palette.warning,
+                  "Signed with the Android debug key",
                   "CN=Android Debug: the key Android Studio makes for debug builds. Play and "
                   "most stores reject it, and anyone can sign an update with the same key.");
         }
-        const auto notReady = std::count_if(apk_.libraries.begin(), apk_.libraries.end(),
-                                            [](const NativeLibrary& l) { return !l.ready16k(); });
+        const auto notReady =
+            std::count_if(apk_.libraries.begin(), apk_.libraries.end(),
+                          [](const NativeLibrary& l) { return !l.ready16k(); });
         if (notReady > 0) {
-            badge(ICON_FA_TRIANGLE_EXCLAMATION " Not 16 KB ready", palette.warning,
-                  "16 KB page size",
-                  "Some 64-bit native libraries cannot load on devices with 16 KB memory pages. "
-                  "See the Native code tab.");
+            badge(
+                ICON_FA_TRIANGLE_EXCLAMATION " Not 16 KB ready", palette.warning,
+                "16 KB page size",
+                "Some 64-bit native libraries cannot load on devices with 16 KB memory pages. "
+                "See the Native code tab.");
         }
     }
     if (d.packageName == context.selectedPackage) {
@@ -547,10 +579,22 @@ void AppInspectorPanel::drawActions(AppContext& context) {
     widgets::termTooltip("Select as target package",
                          "Make the Dashboard, Frame Time and Logcat panels follow this app.");
 
+    widgets::sameLineOrWrap(130.0F);
+    ImGui::BeginDisabled(!context.hasDevice());
+    if (ImGui::Button(ICON_FA_CODE " Browse code")) {
+        context.devices.selectPackage(d.packageName);
+        context.browseCodeRequest = d.packageName;
+    }
+    ImGui::EndDisabled();
+    widgets::termTooltip("Browse code",
+                         "Decompile this app with jadx and open it in the Code panel.");
+
     widgets::sameLineOrWrap(90.0F);
-    if (ImGui::Button(ICON_FA_PLAY " Open")) runAction(context, AppAction::Launch, d.launcherActivity);
-    widgets::termTooltip(d.launcherActivity.empty() ? "monkey -p <pkg> -c LAUNCHER 1"
-                                                    : ("am start -n " + d.launcherActivity).c_str(),
+    if (ImGui::Button(ICON_FA_PLAY " Open"))
+        runAction(context, AppAction::Launch, d.launcherActivity);
+    widgets::termTooltip(d.launcherActivity.empty()
+                             ? "monkey -p <pkg> -c LAUNCHER 1"
+                             : ("am start -n " + d.launcherActivity).c_str(),
                          "Start the app on the phone, as tapping its icon would.");
 
     widgets::sameLineOrWrap(90.0F);
@@ -569,10 +613,10 @@ void AppInspectorPanel::drawActions(AppContext& context) {
     if (ImGui::Button(ICON_FA_DOWNLOAD " Save APK")) pullApks(context);
     ImGui::EndDisabled();
     {
-        const std::string term = d.apks.size() > 1
-                                     ? "adb pull  (" + std::to_string(d.apks.size()) +
-                                           " files: base + splits)"
-                                     : std::string{"adb pull"};
+        const std::string term =
+            d.apks.size() > 1
+                ? "adb pull  (" + std::to_string(d.apks.size()) + " files: base + splits)"
+                : std::string{"adb pull"};
         widgets::termTooltip(term.c_str(),
                              "Copy the app's APK files to this computer, into "
                              "<workspace>/apks/<package>-<version>/.");
@@ -613,7 +657,8 @@ void AppInspectorPanel::drawOverviewTab() {
     const AppDetails& d = details_;
     if (!beginInfoTable("##overview")) return;
 
-    infoRow("Version", "versionName", "The version users see, from build.gradle.", d.versionName);
+    infoRow("Version", "versionName", "The version users see, from build.gradle.",
+            d.versionName);
     infoRow("Version code", "versionCode",
             "The internal build number. Each update must have a higher one.",
             d.versionCode < 0 ? std::string{} : std::to_string(d.versionCode));
@@ -629,10 +674,10 @@ void AppInspectorPanel::drawOverviewTab() {
     infoRow("Opens with", "Launcher activity  (MAIN / LAUNCHER)",
             "The screen that opens when the app's icon is tapped. Empty for apps without an "
             "icon, such as services and plug-ins.",
-            d.launcherActivity.empty() ? std::string{"no launcher icon"}
-                                       : shortClass(d.launcherActivity.substr(
-                                                        d.launcherActivity.find('/') + 1),
-                                                    d.packageName));
+            d.launcherActivity.empty()
+                ? std::string{"no launcher icon"}
+                : shortClass(d.launcherActivity.substr(d.launcherActivity.find('/') + 1),
+                             d.packageName));
     infoRow("User ID", "appId / uid",
             "The Linux user the app runs as. Files and permissions are checked against it.",
             d.appId < 0 ? std::string{} : std::to_string(d.appId));
@@ -712,12 +757,14 @@ void AppInspectorPanel::drawPermissionsTab(AppContext& context) {
             ImGui::BeginDisabled(actionBusy_);
             const std::string label = std::string{shortPermission(g.name)};
             if (ImGui::Checkbox(label.c_str(), &value)) {
-                runAction(context, value ? AppAction::GrantPermission : AppAction::RevokePermission,
+                runAction(context,
+                          value ? AppAction::GrantPermission : AppAction::RevokePermission,
                           g.name);
             }
             ImGui::EndDisabled();
-            ImGui::SetItemTooltip("%s\n%s", g.name.c_str(),
-                                  g.granted ? "Allowed. Untick to revoke." : "Denied. Tick to grant.");
+            ImGui::SetItemTooltip(
+                "%s\n%s", g.name.c_str(),
+                g.granted ? "Allowed. Untick to revoke." : "Denied. Tick to grant.");
             ImGui::TableNextColumn();
             ImGui::PushStyleColor(ImGuiCol_Text, palette.muted);
             ImGui::TextWrapped("%s", describePermissionFlags(g.flags).c_str());
@@ -772,13 +819,15 @@ void AppInspectorPanel::drawPermissionsTab(AppContext& context) {
 
     // --- app ops --------------------------------------------------------------
     if (!d.appOps.empty()) {
-        const std::string opsTitle = "Operation modes  (" + std::to_string(d.appOps.size()) + ")";
+        const std::string opsTitle =
+            "Operation modes  (" + std::to_string(d.appOps.size()) + ")";
         ImGui::SeparatorText(opsTitle.c_str());
         widgets::termTooltip("App ops  (cmd appops get)",
                              "Finer switches behind the permissions, e.g. location only in the "
                              "foreground, or running in the background. allow / ignore / "
                              "foreground / default.");
-        if (ImGui::BeginTable("##appops", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+        if (ImGui::BeginTable("##appops", 2,
+                              ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
             for (const auto& [op, mode] : d.appOps) {
                 if (!matches(op, detailFilter_)) continue;
                 ImGui::TableNextRow();
@@ -786,8 +835,9 @@ void AppInspectorPanel::drawPermissionsTab(AppContext& context) {
                 ImGui::TextUnformatted(op.c_str());
                 ImGui::TableNextColumn();
                 const bool denied = mode.starts_with("ignore") || mode.starts_with("deny");
-                ImGui::TextColored(denied ? palette.muted : ImGui::GetStyleColorVec4(ImGuiCol_Text),
-                                   "%s", mode.c_str());
+                ImGui::TextColored(
+                    denied ? palette.muted : ImGui::GetStyleColorVec4(ImGuiCol_Text), "%s",
+                    mode.c_str());
             }
             ImGui::EndTable();
         }
@@ -801,11 +851,13 @@ void AppInspectorPanel::drawComponentsTab() {
     ImGui::SetNextItemWidth(260.0F);
     ImGui::InputTextWithHint("##compfilter", ICON_FA_FILTER " class or action", &detailFilter_);
 
-    const std::set<std::string> disabled{d.disabledComponents.begin(), d.disabledComponents.end()};
+    const std::set<std::string> disabled{d.disabledComponents.begin(),
+                                         d.disabledComponents.end()};
     const std::string launcherClass =
-        d.launcherActivity.empty() ? std::string{}
-                                   : shortClass(d.launcherActivity.substr(d.launcherActivity.find('/') + 1),
-                                                d.packageName);
+        d.launcherActivity.empty()
+            ? std::string{}
+            : shortClass(d.launcherActivity.substr(d.launcherActivity.find('/') + 1),
+                         d.packageName);
 
     for (const auto kind : {AppComponent::Kind::Activity, AppComponent::Kind::Service,
                             AppComponent::Kind::Receiver, AppComponent::Kind::Provider}) {
@@ -816,34 +868,39 @@ void AppInspectorPanel::drawComponentsTab() {
             for (const auto& a : c.actions) hit = hit || matches(a, detailFilter_);
             if (hit) rows.push_back(&c);
         }
-        const std::string title =
-            std::string{kindLabel(kind)} + "  (" + std::to_string(rows.size()) + ")###" +
-            std::to_string(static_cast<int>(kind));
-        const bool open = ImGui::CollapsingHeader(title.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
+        const std::string title = std::string{kindLabel(kind)} + "  (" +
+                                  std::to_string(rows.size()) + ")###" +
+                                  std::to_string(static_cast<int>(kind));
+        const bool open =
+            ImGui::CollapsingHeader(title.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
         widgets::termTooltip(kindLabel(kind), kindExplanation(kind));
         if (!open) continue;
 
         for (const AppComponent* c : rows) {
             const std::string name = shortClass(c->className, d.packageName);
             const bool isDisabled = disabled.contains(c->className);
-            const bool isLauncher = kind == AppComponent::Kind::Activity && name == launcherClass;
+            const bool isLauncher =
+                kind == AppComponent::Kind::Activity && name == launcherClass;
             ImGui::PushID(c->className.c_str());
             ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth;
             if (c->actions.empty() && c->authorities.empty() && c->permission.empty()) {
                 flags |= ImGuiTreeNodeFlags_Leaf;
             }
             if (isDisabled) ImGui::PushStyleColor(ImGuiCol_Text, palette.muted);
-            const bool node = ImGui::TreeNodeEx("##c", flags, "%s%s%s", isLauncher ? ICON_FA_STAR " " : "",
-                                                name.c_str(), isDisabled ? "  (disabled)" : "");
+            const bool node =
+                ImGui::TreeNodeEx("##c", flags, "%s%s%s", isLauncher ? ICON_FA_STAR " " : "",
+                                  name.c_str(), isDisabled ? "  (disabled)" : "");
             if (isDisabled) ImGui::PopStyleColor();
             if (ImGui::BeginItemTooltip()) {
                 ImGui::TextUnformatted(c->className.c_str());
-                if (isLauncher) ImGui::TextColored(palette.accent, "Opens when the app icon is tapped");
+                if (isLauncher)
+                    ImGui::TextColored(palette.accent, "Opens when the app icon is tapped");
                 ImGui::EndTooltip();
             }
             if (node) {
                 if (!c->permission.empty()) {
-                    ImGui::TextColored(palette.warning, ICON_FA_LOCK " needs %s", c->permission.c_str());
+                    ImGui::TextColored(palette.warning, ICON_FA_LOCK " needs %s",
+                                       c->permission.c_str());
                 }
                 for (const auto& authority : c->authorities) {
                     ImGui::TextDisabled("content://%s", authority.c_str());
@@ -861,14 +918,17 @@ void AppInspectorPanel::drawStorageTab() {
     const AppDetails& d = details_;
 
     ImGui::SeparatorText(ICON_FA_HARD_DRIVE "  Space used");
-    widgets::termTooltip("dumpsys diskstats",
-                         "As Android last measured it. The system refreshes these numbers about "
-                         "once a day, so they can lag behind.");
+    widgets::termTooltip(
+        "dumpsys diskstats",
+        "As Android last measured it. The system refreshes these numbers about "
+        "once a day, so they can lag behind.");
     if (beginInfoTable("##space")) {
-        infoRow("App", "App size", "The APK files and the compiled code.", bytesText(d.appBytes));
+        infoRow("App", "App size", "The APK files and the compiled code.",
+                bytesText(d.appBytes));
         infoRow("Data", "Data size", "Files, databases and settings the app saved.",
                 bytesText(d.dataBytes));
-        infoRow("Cache", "Cache size", "Temporary files Android may delete when space runs low.",
+        infoRow("Cache", "Cache size",
+                "Temporary files Android may delete when space runs low.",
                 bytesText(d.cacheBytes));
         ImGui::EndTable();
     }
@@ -876,12 +936,14 @@ void AppInspectorPanel::drawStorageTab() {
     std::int64_t apkTotal = 0;
     for (const auto& apk : d.apks) apkTotal += std::max<std::int64_t>(apk.sizeBytes, 0);
     const std::string apkTitle = std::string{ICON_FA_BOX_ARCHIVE "  APK files  ("} +
-                                 std::to_string(d.apks.size()) + ", " + bytesText(apkTotal) + ")";
+                                 std::to_string(d.apks.size()) + ", " + bytesText(apkTotal) +
+                                 ")";
     ImGui::SeparatorText(apkTitle.c_str());
     widgets::termTooltip("pm path",
                          "base.apk plus any split APKs (per-language, per-screen-density, "
                          "dynamic features) the app was installed with.");
-    if (ImGui::BeginTable("##apks", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+    if (ImGui::BeginTable("##apks", 2,
+                          ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
         ImGui::TableSetupColumn("File", ImGuiTableColumnFlags_WidthStretch);
         ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed, 80.0F);
         for (const auto& apk : d.apks) {
@@ -904,7 +966,8 @@ void AppInspectorPanel::drawStorageTab() {
     if (d.memory.empty()) {
         ImGui::TextDisabled(d.pids.empty() ? "Not running. Open the app to measure its memory."
                                            : "The device did not report a memory summary.");
-    } else if (ImGui::BeginTable("##mem", 3, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+    } else if (ImGui::BeginTable("##mem", 3,
+                                 ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
         ImGui::TableSetupColumn("Kind", ImGuiTableColumnFlags_WidthStretch);
         ImGui::TableSetupColumn("PSS", ImGuiTableColumnFlags_WidthFixed, 90.0F);
         ImGui::TableSetupColumn("RSS", ImGuiTableColumnFlags_WidthFixed, 90.0F);
@@ -944,7 +1007,8 @@ void AppInspectorPanel::drawBuildTab() {
                          "so it starts slower. speed: everything compiled.");
     if (d.dexopt.empty()) {
         ImGui::TextDisabled("Not reported.");
-    } else if (ImGui::BeginTable("##dexopt", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+    } else if (ImGui::BeginTable("##dexopt", 4,
+                                 ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
         ImGui::TableSetupColumn("APK");
         ImGui::TableSetupColumn("CPU");
         ImGui::TableSetupColumn("Compiled as");
@@ -986,20 +1050,21 @@ void AppInspectorPanel::drawBuildTab() {
 }
 
 void AppInspectorPanel::ensureApkContents(AppContext& context) {
-    if (apkFor_ == selected_ || details_.packageName != selected_ || details_.apks.empty()) return;
+    if (apkFor_ == selected_ || details_.packageName != selected_ || details_.apks.empty())
+        return;
     apkFor_ = selected_;
     apkLoading_ = true;
     crash::setBreadcrumb("Apps: reading the APK files of " + selected_);
     const std::uint64_t generation = generation_;
-    context.apps.analyzeApks(context.pool, context.dispatcher, selected_, details_.apks,
-                             [this, generation](ApkContents contents) {
-                                 if (generation != generation_ ||
-                                     contents.packageName != apkFor_) {
-                                     return;
-                                 }
-                                 apkLoading_ = false;
-                                 apk_ = std::move(contents);
-                             });
+    context.apps.analyzeApks(
+        context.pool, context.dispatcher, selected_, details_.apks,
+        [this, generation](ApkContents contents) {
+            if (generation != generation_ || contents.packageName != apkFor_) {
+                return;
+            }
+            apkLoading_ = false;
+            apk_ = std::move(contents);
+        });
 }
 
 // Shared top of the Native code and Signature tabs. False while there is
@@ -1052,7 +1117,8 @@ void AppInspectorPanel::drawNativeTab(AppContext& context) {
     for (const auto& [abi, n] : perAbi) {
         abis += (abis.empty() ? "" : ",  ") + abi + " (" + std::to_string(n) + ")";
     }
-    ImGui::Text("%zu libraries, %s", libs.size(), humanBytes(static_cast<double>(total)).c_str());
+    ImGui::Text("%zu libraries, %s", libs.size(),
+                humanBytes(static_cast<double>(total)).c_str());
     ImGui::TextDisabled("%s", abis.c_str());
     widgets::termTooltip("ABIs  (lib/<abi>/)",
                          "One folder per CPU architecture the app ships native code for. "
@@ -1065,19 +1131,22 @@ void AppInspectorPanel::drawNativeTab(AppContext& context) {
                                         [](const NativeLibrary& l) { return !l.ready16k(); });
     ImGui::Spacing();
     if (sixtyFour == 0) {
-        ImGui::TextDisabled(ICON_FA_CIRCLE_INFO "  16 KB page size: not applicable (no 64-bit libraries)");
+        ImGui::TextDisabled(ICON_FA_CIRCLE_INFO
+                            "  16 KB page size: not applicable (no 64-bit libraries)");
     } else if (notReady == 0) {
         ImGui::TextColored(palette.good, ICON_FA_CIRCLE_CHECK "  Ready for 16 KB page size");
     } else {
         ImGui::TextColored(palette.warning,
-                           ICON_FA_TRIANGLE_EXCLAMATION "  %lld of %lld 64-bit libraries are not ready "
-                                                        "for 16 KB page size",
+                           ICON_FA_TRIANGLE_EXCLAMATION
+                           "  %lld of %lld 64-bit libraries are not ready "
+                           "for 16 KB page size",
                            static_cast<long long>(notReady), static_cast<long long>(sixtyFour));
     }
     widgets::termTooltip(
         "16 KB page size  (Android 15+)",
         "Newer devices use 16 KB memory pages. A 64-bit library loads on them only if its ELF "
-        "LOAD segments are aligned to 16 KB, and -- when it is stored uncompressed in the APK -- "
+        "LOAD segments are aligned to 16 KB, and -- when it is stored uncompressed in the APK "
+        "-- "
         "its data starts on a 16 KB boundary in the ZIP. Google Play requires this for apps "
         "targeting Android 15 and higher. Fix: NDK r28+, or -Wl,-z,max-page-size=16384, and "
         "AGP 8.5.1+ for the ZIP alignment.");
@@ -1087,20 +1156,20 @@ void AppInspectorPanel::drawNativeTab(AppContext& context) {
     ImGui::InputTextWithHint("##libfilter", ICON_FA_FILTER " library", &detailFilter_);
 
     constexpr ImGuiTableFlags kFlags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV |
-                                       ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp;
+                                       ImGuiTableFlags_Resizable |
+                                       ImGuiTableFlags_SizingStretchProp;
     if (!ImGui::BeginTable("##libs", 5, kFlags)) return;
     ImGui::TableSetupColumn("Library", ImGuiTableColumnFlags_WidthStretch, 2.2F);
     ImGui::TableSetupColumn("CPU", ImGuiTableColumnFlags_WidthStretch, 1.0F);
     ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthStretch, 0.8F);
     ImGui::TableSetupColumn("In the APK", ImGuiTableColumnFlags_WidthStretch, 1.0F);
     ImGui::TableSetupColumn("16 KB pages", ImGuiTableColumnFlags_WidthStretch, 1.1F);
-    static constexpr const char* kTerms[] = {
-        "Library", "ABI", "Uncompressed size", "Stored / compressed  (extractNativeLibs)",
-        "16 KB page size"};
+    static constexpr const char* kTerms[] = {"Library", "ABI", "Uncompressed size",
+                                             "Stored / compressed  (extractNativeLibs)",
+                                             "16 KB page size"};
     static constexpr const char* kExplanations[] = {
         "Hover a row for which APK it is in and its ELF details.",
-        "The CPU architecture folder it ships in.",
-        "Size of the .so file itself.",
+        "The CPU architecture folder it ships in.", "Size of the .so file itself.",
         ("Uncompressed: loaded straight from the APK, which saves space on the device "
          "(extractNativeLibs=false, the default). Compressed: unpacked to the data folder at "
          "install time."),
@@ -1117,9 +1186,10 @@ void AppInspectorPanel::drawNativeTab(AppContext& context) {
             ImGui::Text("lib/%s/%s", l.abi.c_str(), l.name.c_str());
             ImGui::TextDisabled("in %s", l.apk.c_str());
             if (l.elf.valid) {
-                ImGui::TextDisabled("ELF %d-bit %s  |  LOAD segments aligned to %s", l.elf.bits,
-                                    l.elf.machine.c_str(),
-                                    humanBytes(static_cast<double>(l.elf.loadAlignment)).c_str());
+                ImGui::TextDisabled(
+                    "ELF %d-bit %s  |  LOAD segments aligned to %s", l.elf.bits,
+                    l.elf.machine.c_str(),
+                    humanBytes(static_cast<double>(l.elf.loadAlignment)).c_str());
             } else {
                 ImGui::TextColored(palette.bad, "ELF: %s", l.elf.error.c_str());
             }
@@ -1147,8 +1217,9 @@ void AppInspectorPanel::drawNativeTab(AppContext& context) {
             } else {
                 ImGui::TextColored(palette.warning, ICON_FA_XMARK " unreadable");
             }
-            widgets::termTooltip("ELF LOAD alignment",
-                                 "Rebuild with NDK r28+ or link with -Wl,-z,max-page-size=16384.");
+            widgets::termTooltip(
+                "ELF LOAD alignment",
+                "Rebuild with NDK r28+ or link with -Wl,-z,max-page-size=16384.");
         } else {
             ImGui::TextColored(palette.warning, ICON_FA_XMARK " ZIP offset");
             widgets::termTooltip("ZIP alignment",
@@ -1174,10 +1245,12 @@ void AppInspectorPanel::drawSignatureTab(AppContext& context) {
         v31 = v31 || s.scheme == 31;
     }
     ImGui::SeparatorText(ICON_FA_SIGNATURE "  Signature schemes");
-    widgets::termTooltip("APK Signature Schemes",
-                         "How the APK is signed. Newer schemes protect the whole file and allow "
-                         "key rotation; an APK usually carries several for older Android versions.");
-    const auto scheme = [&](const char* label, bool present, const char* term, const char* text) {
+    widgets::termTooltip(
+        "APK Signature Schemes",
+        "How the APK is signed. Newer schemes protect the whole file and allow "
+        "key rotation; an APK usually carries several for older Android versions.");
+    const auto scheme = [&](const char* label, bool present, const char* term,
+                            const char* text) {
         ImGui::TextColored(present ? palette.good : palette.muted, "%s %s",
                            present ? ICON_FA_CHECK : ICON_FA_MINUS, label);
         widgets::termTooltip(term, text);
@@ -1233,7 +1306,8 @@ void AppInspectorPanel::drawSignatureTab(AppContext& context) {
 #else
     gmtime_r(&now, &utc);
 #endif
-    const std::string today = format("%04d-%02d-%02d", utc.tm_year + 1900, utc.tm_mon + 1, utc.tm_mday);
+    const std::string today =
+        format("%04d-%02d-%02d", utc.tm_year + 1900, utc.tm_mon + 1, utc.tm_mday);
 
     for (std::size_t i = 0; i < certs.size(); ++i) {
         const CertificateInfo& c = *certs[i].cert;
@@ -1244,7 +1318,8 @@ void AppInspectorPanel::drawSignatureTab(AppContext& context) {
         if (!c.error.empty()) ImGui::TextColored(palette.bad, "%s", c.error.c_str());
         if (c.isDebugCertificate()) {
             ImGui::PushStyleColor(ImGuiCol_Text, palette.warning);
-            ImGui::TextWrapped(ICON_FA_KEY "  This is the Android debug key -- fine for "
+            ImGui::TextWrapped(ICON_FA_KEY
+                               "  This is the Android debug key -- fine for "
                                "development, never for a release.");
             ImGui::PopStyleColor();
         }
@@ -1272,7 +1347,8 @@ void AppInspectorPanel::drawSignatureTab(AppContext& context) {
                     "certificates keep them for life: the app's key cannot change without "
                     "rotation.",
                     c.signatureAlgorithm);
-            infoRow("Key", "Public key", "The key type and size the APK is signed with.", c.publicKey);
+            infoRow("Key", "Public key", "The key type and size the APK is signed with.",
+                    c.publicKey);
             infoRow("Serial number", "serialNumber", nullptr, c.serialNumber);
             infoRow("Used by", "Signature schemes", "The schemes that carry this certificate.",
                     certs[i].usedBy);
@@ -1307,9 +1383,10 @@ void AppInspectorPanel::drawSignatureTab(AppContext& context) {
         for (const auto& name : block.otherBlocks) ImGui::BulletText("%s", name.c_str());
     }
     ImGui::Spacing();
-    ImGui::TextDisabled("Read from %s. emeron shows the certificates; it does not verify the "
-                        "signatures -- apksigner verify does.",
-                        details_.apks.front().path.substr(details_.apks.front().path.rfind('/') + 1).c_str());
+    ImGui::TextDisabled(
+        "Read from %s. emeron shows the certificates; it does not verify the "
+        "signatures -- apksigner verify does.",
+        details_.apks.front().path.substr(details_.apks.front().path.rfind('/') + 1).c_str());
 }
 
 void AppInspectorPanel::drawRawTab() {
@@ -1353,7 +1430,8 @@ void AppInspectorPanel::drawConfirmModals(AppContext& context) {
             ImGui::CloseCurrentPopup();
         }
         ImGui::SameLine();
-        if (ImGui::Button("Cancel", ImVec2{120.0F, 0.0F}) || ImGui::IsKeyPressed(ImGuiKey_Escape)) {
+        if (ImGui::Button("Cancel", ImVec2{120.0F, 0.0F}) ||
+            ImGui::IsKeyPressed(ImGuiKey_Escape)) {
             ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();
@@ -1366,7 +1444,8 @@ void AppInspectorPanel::drawConfirmModals(AppContext& context) {
             ImGui::CloseCurrentPopup();
         }
         ImGui::SameLine();
-        if (ImGui::Button("Cancel", ImVec2{120.0F, 0.0F}) || ImGui::IsKeyPressed(ImGuiKey_Escape)) {
+        if (ImGui::Button("Cancel", ImVec2{120.0F, 0.0F}) ||
+            ImGui::IsKeyPressed(ImGuiKey_Escape)) {
             ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();
@@ -1375,7 +1454,8 @@ void AppInspectorPanel::drawConfirmModals(AppContext& context) {
 
 void AppInspectorPanel::drawDetails(AppContext& context) {
     if (selected_.empty()) {
-        ImGui::TextDisabled(ICON_FA_HAND_POINTER "  Pick an app on the left to see everything "
+        ImGui::TextDisabled(ICON_FA_HAND_POINTER
+                            "  Pick an app on the left to see everything "
                             "about it.");
         return;
     }
@@ -1403,9 +1483,9 @@ void AppInspectorPanel::drawDetails(AppContext& context) {
         }
     };
     tab(ICON_FA_CIRCLE_INFO " Overview", [&] { drawOverviewTab(); });
-    const std::string permissions =
-        std::string{ICON_FA_SHIELD_HALVED " Permissions ("} +
-        std::to_string(details_.requestedPermissions.size()) + ")###perms";
+    const std::string permissions = std::string{ICON_FA_SHIELD_HALVED " Permissions ("} +
+                                    std::to_string(details_.requestedPermissions.size()) +
+                                    ")###perms";
     tab(permissions.c_str(), [&] { drawPermissionsTab(context); });
     const std::string components = std::string{ICON_FA_PUZZLE_PIECE " Components ("} +
                                    std::to_string(details_.components.size()) + ")###comps";
@@ -1440,7 +1520,8 @@ void AppInspectorPanel::draw(AppContext& context) {
         if (context.hasPackage() && known) select(context, context.selectedPackage);
     }
 
-    if (ImGui::BeginTable("##split", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV,
+    if (ImGui::BeginTable("##split", 2,
+                          ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV,
                           ImVec2{0.0F, -1.0F})) {
         ImGui::TableSetupColumn("list", ImGuiTableColumnFlags_WidthFixed, 330.0F);
         ImGui::TableSetupColumn("details", ImGuiTableColumnFlags_WidthStretch);

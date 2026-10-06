@@ -92,8 +92,8 @@ void drawAboutDialog(bool& open) {
         "Icons by Font Awesome (https://fontawesome.com), CC BY 4.0. Fonts: "
         "Font Awesome Free, SIL OFL 1.1.");
     ImGui::TextDisabled(
-        "adb and trace_processor_shell are not bundled; they are found on this "
-        "machine.");
+        "adb, trace_processor_shell and jadx (Apache-2.0) are not bundled; they are "
+        "found on this machine.");
 
     ImGui::Spacing();
     ImGui::Separator();

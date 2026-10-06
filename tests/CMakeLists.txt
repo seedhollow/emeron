@@ -19,6 +19,7 @@ add_executable(emeron_tests
     test_scrcpy_protocol.cpp
     test_layout_inspector.cpp
     test_input_script.cpp
+    test_jadx_session.cpp
 
     # Theme lives in the GUI target, but its palettes are pure data and the
     # contrast of a hand-written light theme is exactly the thing worth
