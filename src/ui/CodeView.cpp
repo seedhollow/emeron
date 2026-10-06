@@ -10,6 +10,7 @@
 
 #include <IconsFontAwesome6.h>
 
+#include "app/Fonts.h"
 #include "app/Theme.h"
 #include "core/StringUtil.h"
 
@@ -192,7 +193,12 @@ void CodeView::highlightJava() {
             std::uint32_t j = i + 1;
             while (j < n && identChar(t[j])) ++j;
             const std::string_view word{t.data() + i, j - i};
-            Color color = refColor(i);
+            // Import and package lines stay plain, as in IntelliJ: jadx marks
+            // only the start of the qualified name, which would tint "com".
+            const auto ls = t.rfind('\n', i);
+            const std::string_view line{t.data() + (ls == std::string::npos ? 0 : ls + 1)};
+            const bool header = line.starts_with("import ") || line.starts_with("package ");
+            Color color = header ? Default : refColor(i);
             if (color == Default && javaKeyword(word)) color = Keyword;
             addSpan(i, j, color);
             i = j;
@@ -484,6 +490,8 @@ CodeView::Action CodeView::draw(const char* id) {
     ImGui::BeginChild("##code", {0.0F, 0.0F}, ImGuiChildFlags_None,
                       ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoMove);
     ImGui::PopStyleColor();
+    // Code is drawn in the monospace font; the context menu keeps the UI one.
+    ImGui::PushFont(fonts::mono(), fonts::monoSize());
 
     const auto& palette = theme::palette();
     ImDrawList* draw = ImGui::GetWindowDrawList();
@@ -616,6 +624,7 @@ CodeView::Action CodeView::draw(const char* id) {
         if (ImGui::IsKeyPressed(ImGuiKey_End)) ImGui::SetScrollY(ImGui::GetScrollMaxY());
     }
 
+    ImGui::PopFont();
     if (ImGui::BeginPopup("##codemenu")) {
         const CodeRef* ref = refAt(caret_);
         if (ImGui::MenuItem(ICON_FA_ARROW_RIGHT "  Go to declaration", "D", false,
@@ -638,6 +647,7 @@ CodeView::Action CodeView::draw(const char* id) {
         ImGui::EndPopup();
     }
 
+    ImGui::PushFont(fonts::mono(), fonts::monoSize());
     // --- paint ---
     const ImVec2 clipMin = winPos;
     const ImVec2 clipMax{winPos.x + viewW, winPos.y + viewH};
@@ -761,6 +771,7 @@ CodeView::Action CodeView::draw(const char* id) {
                       line == caretLine ? colorFor(Default) : mutedColor, num);
     }
 
+    ImGui::PopFont();
     ImGui::EndChild();
     ImGui::PopID();
     return action;

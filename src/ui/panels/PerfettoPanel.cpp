@@ -260,7 +260,7 @@ void PerfettoPanel::drawCaptureTab(AppContext& context) {
         case CaptureStatus::Phase::Done:
             ImGui::TextColored(palette.good, "%s", status.message.c_str());
             ImGui::SameLine();
-            if (ImGui::SmallButton(ICON_FA_MAGNIFYING_GLASS_CHART " Open in Explore")) {
+            if (ImGui::Button(ICON_FA_MAGNIFYING_GLASS_CHART " Open in Explore")) {
                 openedTrace_ = status.localPath;
                 if (auto opened = context.traceProcessor.openTrace(openedTrace_); !opened) {
                     queryError_ = opened.error().message;

@@ -128,7 +128,30 @@ add_custom_command(
     COMMENT "Embedding the jadx bridge"
     VERBATIM)
 
-add_library(emeron_assets STATIC "${EMERON_FA_CPP}" "${EMERON_SCRCPY_CPP}" "${EMERON_JADX_BRIDGE_CPP}")
+# The UI text fonts (vendor/fonts, SIL OFL 1.1): Inter for the interface,
+# JetBrains Mono for code and logs.
+set(EMERON_TEXT_FONT_CPPS "")
+foreach(font IN ITEMS
+        "inter/Inter-Regular.ttf|kInterRegular"
+        "inter/Inter-SemiBold.ttf|kInterSemiBold"
+        "jetbrains-mono/JetBrainsMono-Regular.ttf|kJetBrainsMonoRegular")
+    string(REPLACE "|" ";" parts "${font}")
+    list(GET parts 0 font_file)
+    list(GET parts 1 font_symbol)
+    set(font_ttf "${CMAKE_CURRENT_SOURCE_DIR}/vendor/fonts/${font_file}")
+    set(font_cpp "${CMAKE_CURRENT_BINARY_DIR}/generated/${font_symbol}.cpp")
+    add_custom_command(
+        OUTPUT  "${font_cpp}"
+        COMMAND "${CMAKE_COMMAND}" -DINPUT=${font_ttf} -DOUTPUT=${font_cpp}
+                -DSYMBOL=${font_symbol} -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedFile.cmake"
+        DEPENDS "${font_ttf}" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedFile.cmake"
+        COMMENT "Embedding ${font_file}"
+        VERBATIM)
+    list(APPEND EMERON_TEXT_FONT_CPPS "${font_cpp}")
+endforeach()
+
+add_library(emeron_assets STATIC "${EMERON_FA_CPP}" "${EMERON_SCRCPY_CPP}" "${EMERON_JADX_BRIDGE_CPP}"
+    ${EMERON_TEXT_FONT_CPPS})
 target_compile_definitions(emeron_assets PUBLIC EMERON_SCRCPY_VERSION="${EMERON_SCRCPY_VERSION}")
 target_include_directories(emeron_assets SYSTEM PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/vendor/IconFontCppHeaders")

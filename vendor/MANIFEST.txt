@@ -118,6 +118,22 @@ ImGuiNotify
               Re-apply on every update: grep -n "EMERON PATCH".
   pruned      everything but ImGuiNotify.hpp and LICENSE.
 
+Inter
+  repository  https://github.com/rsms/inter.git
+  tag         v4.1
+  file        release asset Inter-4.1.zip: extras/ttf/Inter-Regular.ttf,
+              extras/ttf/Inter-SemiBold.ttf (static TTFs, unmodified)
+  license     SIL OFL 1.1 (vendor/fonts/inter/LICENSE.txt)
+  note        The interface font. Embedded like Font Awesome.
+
+JetBrains Mono
+  repository  https://github.com/JetBrains/JetBrainsMono.git
+  tag         v2.304
+  file        release asset JetBrainsMono-2.304.zip: fonts/ttf/JetBrainsMono-Regular.ttf,
+              unmodified
+  license     SIL OFL 1.1 (vendor/fonts/jetbrains-mono/OFL.txt)
+  note        Code, logs and other column-aligned text.
+
 Font Awesome Free (Solid)
   repository  https://github.com/FortAwesome/Font-Awesome.git
   tag         6.7.2

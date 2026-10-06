@@ -12,6 +12,8 @@ license for each, plus what was pruned and why.
 | [implot](https://github.com/epezent/implot) | v1.0 | MIT |
 | [glfw](https://github.com/glfw/glfw) | 3.4 | Zlib/libpng |
 | [nativefiledialog-extended](https://github.com/btzy/nativefiledialog-extended) | v1.4.1 | Zlib |
+| [Inter](https://rsms.me/inter/) — Regular, SemiBold | 4.1 | SIL OFL 1.1 |
+| [JetBrains Mono](https://www.jetbrains.com/lp/mono/) — Regular | 2.304 | SIL OFL 1.1 |
 | [Font Awesome Free](https://fontawesome.com) — Solid | 6.7.2 | Font: SIL OFL 1.1, icons: CC BY 4.0 |
 | [IconFontCppHeaders](https://github.com/juliettef/IconFontCppHeaders) — `IconsFontAwesome6.h` | 2026-06-05 | Zlib |
 

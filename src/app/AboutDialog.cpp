@@ -35,6 +35,8 @@ constexpr Credit kCredits[] = {
     {"ImGuiNotify", "MIT", "https://github.com/TyomaVader/ImGuiNotify"},
     {"IconFontCppHeaders", "Zlib", "https://github.com/juliettef/IconFontCppHeaders"},
     {"miniz", "MIT", "https://github.com/richgel999/miniz"},
+    {"Inter (font)", "SIL OFL 1.1", "https://rsms.me/inter/"},
+    {"JetBrains Mono (font)", "SIL OFL 1.1", "https://www.jetbrains.com/lp/mono/"},
     {"scrcpy server", "Apache-2.0", "https://github.com/Genymobile/scrcpy"},
 };
 
