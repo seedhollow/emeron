@@ -27,6 +27,7 @@
 #include "adb/AdbCliTransport.h"
 #include "core/CrashHandler.h"
 #include "adb/DeviceManager.h"
+#include "app/AboutDialog.h"
 #include "app/AppContext.h"
 #include "app/Fonts.h"
 #include "app/InputScript.h"
@@ -216,6 +217,7 @@ struct Application::Impl {
     bool selectDefaultTabs = false;
     bool showImGuiDemo = false;
     bool showImPlotDemo = false;
+    bool showAbout = false;
     bool quitRequested = false;
 
     // --script: the steps, where we are, and what the current step waits for.
@@ -710,6 +712,8 @@ void Application::Impl::drawMenuBar(AppContext& context) {
         ImGui::MenuItem(ICON_FA_WINDOW_MAXIMIZE "  Dear ImGui demo", nullptr, &showImGuiDemo);
         ImGui::MenuItem(ICON_FA_CHART_AREA "  ImPlot demo", nullptr, &showImPlotDemo);
         ImGui::Separator();
+        if (ImGui::MenuItem(ICON_FA_CIRCLE_INFO "  About emeron")) showAbout = true;
+        ImGui::Separator();
         ImGui::TextDisabled("adb: %s", transport->describe().c_str());
         ImGui::TextDisabled("workspace: %s", context.workspaceDir.string().c_str());
         ImGui::EndMenu();
@@ -855,6 +859,7 @@ void Application::Impl::drawFrame(AppContext& context) {
 
     if (showImGuiDemo) ImGui::ShowDemoWindow(&showImGuiDemo);
     if (showImPlotDemo) ImPlot::ShowDemoWindow(&showImPlotDemo);
+    drawAboutDialog(showAbout);
 }
 
 void Application::Impl::shutdown(AppContext& context) {

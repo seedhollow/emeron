@@ -132,6 +132,7 @@ add_executable(emeron
     src/app/Fonts.cpp
     src/app/Screenshot.cpp
     src/app/InputScript.cpp
+    src/app/AboutDialog.cpp
     src/ui/PanelRegistry.cpp
     src/ui/Notifications.cpp
     src/ui/panels/DeviceToolbar.cpp
@@ -148,6 +149,8 @@ add_executable(emeron
     src/ui/panels/ScreenMirrorPanel.cpp
     src/ui/panels/LayoutInspectorPanel.cpp
 )
+
+target_compile_definitions(emeron PRIVATE EMERON_VERSION="${PROJECT_VERSION}")
 
 # implot links imgui publicly, so naming both would pass libimgui.a twice.
 target_link_libraries(emeron PRIVATE emeron_core emeron_assets implot::implot)
